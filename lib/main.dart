@@ -1,6 +1,9 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart'; // -> Tambahkan import ini
+import 'package:google_fonts/google_fonts.dart';
+import 'screens/login_screen.dart';
 import 'screens/pos_dashboard_screen.dart';
 
 void main() {
@@ -9,7 +12,7 @@ void main() {
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]).then((_) {
-    runApp(const MyApp());
+    runApp(const ProviderScope(child: MyApp()));
   });
 }
 
@@ -27,7 +30,9 @@ class MyApp extends StatelessWidget {
           Theme.of(context).textTheme,
         ),
       ),
-      home: const PosDashboardScreen(),
+      // kDebugMode is true when running via flutter run / emulator.
+      // Remove the ternary and keep LoginScreen() once login is wired up.
+      home: kDebugMode ? const PosDashboardScreen() : const LoginScreen(),
     );
   }
 }
