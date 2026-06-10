@@ -15,29 +15,18 @@ enum OrderType { dineIn, takeaway }
 class CartState {
   final List<CartItem> items;
   final OrderType orderType;
-  final int discountAmount;
 
-  const CartState({
-    this.items = const [],
-    this.orderType = OrderType.dineIn,
-    this.discountAmount = 0,
-  });
+  const CartState({this.items = const [], this.orderType = OrderType.dineIn});
 
   int get subtotal => items.fold(0, (sum, item) => sum + item.subtotal);
   int get tax => (subtotal * 0.11).round();
-  int get total =>
-      (subtotal - discountAmount + tax).clamp(0, double.maxFinite).toInt();
+  int get total => subtotal + tax;
   int get itemCount => items.fold(0, (sum, item) => sum + item.quantity);
 
-  CartState copyWith({
-    List<CartItem>? items,
-    OrderType? orderType,
-    int? discountAmount,
-  }) {
+  CartState copyWith({List<CartItem>? items, OrderType? orderType}) {
     return CartState(
       items: items ?? this.items,
       orderType: orderType ?? this.orderType,
-      discountAmount: discountAmount ?? this.discountAmount,
     );
   }
 }
@@ -118,9 +107,6 @@ class CartNotifier extends StateNotifier<CartState> {
   void clearCart() => state = const CartState();
 
   void setOrderType(OrderType type) => state = state.copyWith(orderType: type);
-
-  void setDiscount(int amount) =>
-      state = state.copyWith(discountAmount: amount);
 }
 
 // ---------------------------------------------------------------------------

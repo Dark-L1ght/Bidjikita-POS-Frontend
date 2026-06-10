@@ -192,6 +192,81 @@ final productListProvider = Provider<List<Product>>((ref) {
       caffeineLevel: 'Tidak Ada',
       availableSizes: ['Regular'],
     ),
+    // ── BUNDLING ───────────────────────────────────────────────────────────
+    Product(
+      id: 'b1',
+      name: 'Morning Coffee Bundle',
+      price: 45000,
+      category: 'Bundling',
+      description:
+          'Paket sarapan sempurna: satu kopi pilihan dan satu croissant mentega yang hangat.',
+      ingredients: [],
+      caffeineLevel: 'Tinggi',
+      availableSizes: ['Regular'],
+      isBundle: true,
+      bundleContents: ['1× Americano Classic', '1× Croissant Butter'],
+      originalPrice: 53000,
+    ),
+    Product(
+      id: 'b2',
+      name: 'Sweet Escape Bundle',
+      price: 50000,
+      category: 'Bundling',
+      description:
+          'Matcha latte yang menenangkan dipadukan dengan brownies cokelat fudgy yang lezat.',
+      ingredients: [],
+      caffeineLevel: 'Rendah',
+      availableSizes: ['Regular'],
+      isBundle: true,
+      bundleContents: ['1× Matcha Latte', '1× Chocolate Brownies'],
+      originalPrice: 56000,
+    ),
+    Product(
+      id: 'b3',
+      name: "Couple's Bundle",
+      price: 68000,
+      category: 'Bundling',
+      description:
+          'Nikmati dua minuman kopi premium favorit bersama orang tersayang.',
+      ingredients: [],
+      caffeineLevel: 'Sedang',
+      availableSizes: ['Regular'],
+      isBundle: true,
+      bundleContents: ['1× Cappuccino Deluxe', '1× French Vanilla Fantasy'],
+      originalPrice: 77000,
+    ),
+    Product(
+      id: 'b4',
+      name: 'Afternoon Treat Bundle',
+      price: 65000,
+      category: 'Bundling',
+      description:
+          'Tiga pilihan nikmat untuk menemani soremu yang santai dan produktif.',
+      ingredients: [],
+      caffeineLevel: 'Tidak Ada',
+      availableSizes: ['Regular'],
+      isBundle: true,
+      bundleContents: [
+        '1× Chocolate Velvet',
+        '1× Banana Bread',
+        '1× Cinnamon Swirl',
+      ],
+      originalPrice: 77000,
+    ),
+    Product(
+      id: 'b5',
+      name: 'Power Up Bundle',
+      price: 55000,
+      category: 'Bundling',
+      description:
+          'Kombinasi sempurna antara kopi kuat dan makanan bergizi untuk harimu.',
+      ingredients: [],
+      caffeineLevel: 'Sangat Tinggi',
+      availableSizes: ['Regular'],
+      isBundle: true,
+      bundleContents: ['1× Dark Roast Dynamite', '1× Avocado Toast'],
+      originalPrice: 67000,
+    ),
     // ── SNACK ─────────────────────────────────────────────────────────────
     Product(
       id: 'p14',
@@ -251,9 +326,7 @@ final filteredProductsProvider = Provider<List<Product>>((ref) {
       : products.where((p) => p.category == category).toList();
 
   if (query.isNotEmpty) {
-    result = result
-        .where((p) => p.name.toLowerCase().contains(query))
-        .toList();
+    result = result.where((p) => p.name.toLowerCase().contains(query)).toList();
   }
 
   return result;

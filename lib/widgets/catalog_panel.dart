@@ -14,18 +14,25 @@ class CatalogPanel extends ConsumerStatefulWidget {
 
 class _CatalogPanelState extends ConsumerState<CatalogPanel> {
   final _searchController = TextEditingController();
+  final _focusNode = FocusNode();
+  bool _isFocused = false;
 
   @override
   void initState() {
     super.initState();
     // initialise search controller with provider value
     _searchController.text = ref.read(searchQueryProvider);
-
+    _focusNode.addListener(() {
+      setState(() {
+        _isFocused = _focusNode.hasFocus;
+      });
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -328,11 +335,20 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
   void _showAddedSnackbar(BuildContext context, String name) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$name ditambahkan ke keranjang'),
+        content: Text(
+          '$name ditambahkan ke keranjang',
+          style: const TextStyle(
+            color: Color(0xFF04291A),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         duration: const Duration(milliseconds: 1400),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF04291A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: Color(0xFF04291A), width: 1.2),
+        ),
         margin: const EdgeInsets.all(16),
       ),
     );
@@ -511,7 +527,14 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
   // ──────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    const categories = ['Semua', 'Kopi', 'Non-Kopi', 'Makanan', 'Snack'];
+    const categories = [
+      'Semua',
+      'Kopi',
+      'Non-Kopi',
+      'Makanan',
+      'Snack',
+      'Bundling',
+    ];
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final searchQuery = ref.watch(searchQueryProvider);
     final products = ref.watch(filteredProductsProvider);
@@ -573,48 +596,94 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
               const SizedBox(width: 12),
 
               // Search box placed to the right of category chips
-              SizedBox(
-                width: 260,
-                height: 35,
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: _isFocused ? 280 : 220,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(
+                    color: _isFocused
+                        ? const Color(0xFF04291A)
+                        : const Color(0xFFD1D5DB),
+                    width: 1.2,
+                  ),
+                  boxShadow: _isFocused
+                      ? [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF04291A,
+                            ).withValues(alpha: 0.08),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : [],
+                ),
                 child: TextField(
                   controller: _searchController,
-                  onChanged: (v) => ref.read(searchQueryProvider.notifier).state = v,
+                  focusNode: _focusNode,
+                  onChanged: (v) =>
+                      ref.read(searchQueryProvider.notifier).state = v,
                   textAlignVertical: TextAlignVertical.center,
-                  style: const TextStyle(height: 1.0),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w500,
+                  ),
                   decoration: InputDecoration(
                     isDense: true,
-                    hintText: 'Cari nama menu...',
-                    hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
-                    prefixIcon: Icon(Icons.search_rounded, color: Colors.grey[400], size: 18),
-                    prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                    suffixIcon: Visibility(
-                      visible: searchQuery.isNotEmpty,
-                      maintainState: true,
-                      maintainAnimation: true,
-                      maintainSize: true,
-                      child: GestureDetector(
-                        onTap: () {
-                          _searchController.clear();
-                          ref.read(searchQueryProvider.notifier).state = '';
-                        },
-                        child: Icon(Icons.cancel_rounded, color: Colors.grey[400], size: 18),
+                    hintText: 'Cari kopi, snack, makanan...',
+                    hintStyle: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.normal,
+                    ),
+                    prefixIcon: AnimatedRotation(
+                      turns: _isFocused ? 0.25 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        Icons.search_rounded,
+                        color: _isFocused
+                            ? const Color(0xFF04291A)
+                            : Colors.grey[400],
+                        size: 18,
                       ),
                     ),
+                    prefixIconConstraints: const BoxConstraints(
+                      minWidth: 36,
+                      minHeight: 36,
+                    ),
+                    suffixIcon: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 150),
+                      child: searchQuery.isNotEmpty
+                          ? GestureDetector(
+                              key: const ValueKey('clear_btn'),
+                              onTap: () {
+                                _searchController.clear();
+                                ref.read(searchQueryProvider.notifier).state =
+                                    '';
+                              },
+                              child: Icon(
+                                Icons.cancel_rounded,
+                                color: Colors.grey[400],
+                                size: 18,
+                              ),
+                            )
+                          : const SizedBox.shrink(
+                              key: ValueKey('empty_suffix'),
+                            ),
+                    ),
                     filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.grey[200]!, width: 1.5),
+                    fillColor: Colors.transparent,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 0,
+                      horizontal: 8,
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.grey[200]!, width: 1.5),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: Color(0xFF04291A), width: 1.5),
-                    ),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
                   ),
                 ),
               ),
@@ -843,6 +912,8 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final savings = product.originalPrice - product.price;
+
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: onTap,
@@ -850,25 +921,67 @@ class _ProductCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+          border: Border.all(
+            color: product.isBundle
+                ? const Color(0xFF04291A).withValues(alpha: 0.3)
+                : Colors.grey.withValues(alpha: 0.2),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Image area
             Expanded(
-              child: Container(
-                margin: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E3A2F),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Center(
-                  child: Icon(Icons.coffee, color: Colors.white30, size: 40),
-                ),
+              child: Stack(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: product.isBundle
+                          ? const Color(0xFF0D2B20)
+                          : const Color(0xFF1E3A2F),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        product.isBundle
+                            ? Icons.card_giftcard_rounded
+                            : Icons.coffee,
+                        color: Colors.white30,
+                        size: 40,
+                      ),
+                    ),
+                  ),
+                  // Bundle savings badge
+                  if (product.isBundle && savings > 0)
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.amber[700],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Hemat ${_shortK(savings)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
+            // Info area
             Padding(
-              padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
+              padding: const EdgeInsets.only(left: 12, right: 12, bottom: 10),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -886,14 +999,47 @@ class _ProductCard extends StatelessWidget {
                           ),
                           maxLines: 1,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          formatRupiah(product.price),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                            color: Colors.black87,
+                        // Bundle contents
+                        if (product.isBundle &&
+                            product.bundleContents.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            product.bundleContents.join(' + '),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey[500],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
+                        ],
+                        const SizedBox(height: 4),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              formatRupiah(product.price),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            if (product.isBundle &&
+                                product.originalPrice > product.price) ...[
+                              const SizedBox(width: 4),
+                              Text(
+                                formatRupiah(product.originalPrice),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey[400],
+                                  decoration: TextDecoration.lineThrough,
+                                  decorationThickness: 1.5,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
@@ -922,6 +1068,11 @@ class _ProductCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _shortK(int amount) {
+  if (amount >= 1000) return 'Rp ${(amount ~/ 1000)}K';
+  return formatRupiah(amount);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

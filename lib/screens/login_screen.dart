@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'pos_dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -262,7 +263,11 @@ class _LoginScreenState extends State<LoginScreen> {
       width: double.infinity,
       child: ElevatedButton(
         onPressed: () {
-          // TODO: implement login logic
+          // Bypass login and navigate to POS Dashboard
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const PosDashboardScreen()),
+          );
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: _darkGreen,

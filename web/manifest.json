@@ -1,6 +1,6 @@
 {
-    "name": "kasir_bidjikita",
-    "short_name": "kasir_bidjikita",
+    "name": "Bidjikita POS",
+    "short_name": "Bidjikita POS",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
