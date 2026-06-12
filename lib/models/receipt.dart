@@ -25,7 +25,7 @@ class ReceiptData {
     required this.paymentMethod,
     this.cashReceived = 0,
     this.change = 0,
-    this.cashierName = 'Nabil',
+    this.cashierName = 'Kasir',
     this.customerName = '',
   });
 }

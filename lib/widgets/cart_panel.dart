@@ -147,7 +147,9 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                         } else if (key == ' ') {
                           customerController.text += ' ';
                         } else {
-                          customerController.text += key;
+                          if (customerController.text.length < 50) {
+                            customerController.text += key;
+                          }
                         }
                       }),
                     ),
@@ -243,181 +245,154 @@ class _CartPanelState extends ConsumerState<CartPanel> {
     CartState cart, {
     String customerName = '',
   }) {
-    bool isLoading = false;
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) {
-          return Dialog(
-            backgroundColor: Colors.white,
-            surfaceTintColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Container(
-              width: 380,
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          width: 380,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          _showPaymentMethodDialog(context, ref, cart);
-                        },
-                        child: const Icon(
-                          Icons.arrow_back_rounded,
-                          size: 20,
-                          color: Colors.black54,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'Pembayaran QRIS',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Spacer(),
-                      GestureDetector(
-                        onTap: () => Navigator.pop(ctx),
-                        child: const Icon(
-                          Icons.close,
-                          size: 20,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 16,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEBF5F0),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          'Total Pembayaran',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          formatRupiah(cart.total),
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF04291A),
-                          ),
-                        ),
-                      ],
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showPaymentMethodDialog(context, ref, cart);
+                    },
+                    child: const Icon(
+                      Icons.arrow_back_rounded,
+                      size: 20,
+                      color: Colors.black54,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  Container(
-                    width: 200,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F5F5),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.qr_code_2_rounded,
-                          size: 80,
-                          color: Color(0xFF04291A),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Bidjikita Coffee Roastery',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Tambahkan qris_code.png\nke assets/images/',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 9,
-                          ),
-                        ),
-                      ],
-                    ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'Pembayaran QRIS',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Scan kode QR di atas dengan aplikasi pembayaran',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF04291A),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        elevation: 0,
-                      ),
-                      onPressed: isLoading
-                          ? null
-                          : () => _processPayment(
-                              ctx,
-                              cart,
-                              'qris',
-                              'QRIS',
-                              (loading) =>
-                                  setDialogState(() => isLoading = loading),
-                              customerName: customerName,
-                            ),
-                      icon: isLoading
-                          ? const SizedBox(
-                              height: 18,
-                              width: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation(
-                                  Colors.white,
-                                ),
-                              ),
-                            )
-                          : const Icon(
-                              Icons.check_circle_outline_rounded,
-                              size: 18,
-                            ),
-                      label: const Text(
-                        'Konfirmasi Pembayaran',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: const Icon(
+                      Icons.close,
+                      size: 20,
+                      color: Colors.black54,
                     ),
                   ),
                 ],
               ),
-            ),
-          );
-        },
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEBF5F0),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      'Total Pembayaran',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      formatRupiah(cart.total),
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF04291A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.qr_code_2_rounded,
+                      size: 80,
+                      color: Color(0xFF04291A),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Bidjikita Coffee Roastery',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Tambahkan qris_code.png\nke assets/images/',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey[400], fontSize: 9),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Scan kode QR di atas dengan aplikasi pembayaran',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF04291A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 0,
+                  ),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _processPayment(
+                      context,
+                      cart,
+                      'qris',
+                      'QRIS',
+                      (_) {},
+                      customerName: customerName,
+                    );
+                  },
+                  icon: const Icon(
+                    Icons.check_circle_outline_rounded,
+                    size: 18,
+                  ),
+                  label: const Text(
+                    'Konfirmasi Pembayaran',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -432,6 +407,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
     String customerName = '',
   }) {
     String cashStr = '0';
+    bool isProcessing = false;
 
     showDialog(
       context: context,
@@ -714,21 +690,20 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                                 ),
                                 elevation: 0,
                               ),
-                              onPressed: canConfirm
-                                  ? () => _processPayment(
-                                      ctx,
-                                      cart,
-                                      'cash',
-                                      'Tunai',
-                                      (loading) => setDialogState(
-                                        () => cashStr = loading
-                                            ? 'loading'
-                                            : cashStr,
-                                      ),
-                                      customerName: customerName,
-                                      cashReceived: cashAmount,
-                                      change: change,
-                                    )
+                              onPressed: (canConfirm && !isProcessing)
+                                  ? () {
+                                      Navigator.pop(ctx);
+                                      _processPayment(
+                                        context,
+                                        cart,
+                                        'cash',
+                                        'Tunai',
+                                        (_) {},
+                                        customerName: customerName,
+                                        cashReceived: cashAmount,
+                                        change: change,
+                                      );
+                                    }
                                   : null,
                               icon: Icon(
                                 Icons.check_circle_outline_rounded,
@@ -854,9 +829,41 @@ class _CartPanelState extends ConsumerState<CartPanel> {
       return;
     }
 
+    // Show loading overlay that blocks background interaction
+    late BuildContext loadingCtx;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        loadingCtx = ctx;
+        return const PopScope(
+          canPop: false,
+          child: Center(
+            child: Dialog(
+              backgroundColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: Colors.white),
+                  SizedBox(height: 12),
+                  Text(
+                    'Memproses pembayaran...',
+                    style: TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
     setLoading(true);
     try {
-      final orderNumber = 'ORD-${DateTime.now().millisecondsSinceEpoch}';
+      final orderNumber =
+          'ORD-${DateTime.now().millisecondsSinceEpoch}-${DateTime.now().microsecond}';
       // Build order items — bundles as a single line item, regular items as-is
       final items = cart.items.map((item) {
         if (item.bundleSubItems.isNotEmpty) {
@@ -913,9 +920,10 @@ class _CartPanelState extends ConsumerState<CartPanel> {
       );
 
       ref.read(cartProvider.notifier).clearCart();
-      if (dialogContext.mounted) Navigator.pop(dialogContext);
+      if (loadingCtx.mounted) Navigator.pop(loadingCtx);
       if (mounted) _showReceiptDialog(context, receipt);
     } on ApiException catch (e) {
+      if (loadingCtx.mounted) Navigator.pop(loadingCtx);
       setLoading(false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -923,6 +931,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
         );
       }
     } catch (e) {
+      if (loadingCtx.mounted) Navigator.pop(loadingCtx);
       setLoading(false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1130,7 +1139,9 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                   children: [
                     Expanded(
                       child: Text(
-                        '1\u00d7  ${item.product.name}',
+                        '1×  ${item.product.name}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -1148,6 +1159,8 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                     padding: const EdgeInsets.only(left: 14, bottom: 1),
                     child: Text(
                       '${sub.productName}${sub.variantName != null && sub.variantName != sub.productName ? " - ${sub.variantName}" : ""} x${sub.quantity}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 9, color: Colors.grey[500]),
                     ),
                   ),
@@ -1173,7 +1186,9 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                 children: [
                   Expanded(
                     child: Text(
-                      '${item.quantity}\u00d7  ${item.product.name}',
+                      '${item.quantity}×  ${item.product.name}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -1219,8 +1234,6 @@ class _CartPanelState extends ConsumerState<CartPanel> {
           }),
           const SizedBox(height: 4),
           const Divider(height: 1, color: Colors.black26),
-          const SizedBox(height: 4),
-          _previewRow('Subtotal', formatRupiah(receipt.subtotal)),
           const SizedBox(height: 4),
           Container(height: 1.5, color: Colors.black87),
           const SizedBox(height: 4),
@@ -1329,7 +1342,41 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                 TextButton.icon(
                   onPressed: cart.items.isEmpty
                       ? null
-                      : () => ref.read(cartProvider.notifier).clearCart(),
+                      : () {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              title: const Text('Hapus Semua?'),
+                              content: const Text(
+                                'Semua item dalam keranjang akan dihapus.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx),
+                                  child: const Text('Batal'),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red[600],
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    ref.read(cartProvider.notifier).clearCart();
+                                    Navigator.pop(ctx);
+                                  },
+                                  child: const Text('Hapus Semua'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                   icon: const Icon(
                     Icons.layers_clear_outlined,
                     size: 14,
@@ -1685,8 +1732,11 @@ class _NumpadKey extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isBackspace = label == '⌫';
+    final isDone = label == 'Done';
     return Material(
-      color: isBackspace ? const Color(0xFFFFEBEB) : const Color(0xFFF5F5F5),
+      color: isDone
+          ? const Color(0xFFEBF5F0)
+          : (isBackspace ? const Color(0xFFFFEBEB) : const Color(0xFFF5F5F5)),
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
@@ -1702,10 +1752,10 @@ class _NumpadKey extends StatelessWidget {
                   )
                 : Text(
                     label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      color: isDone ? const Color(0xFF04291A) : Colors.black87,
                     ),
                   ),
           ),
@@ -1789,6 +1839,8 @@ Widget _previewRow(String label, String value) {
         ),
         Text(
           value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 10, color: Colors.black87),
         ),
       ],

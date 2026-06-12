@@ -16,7 +16,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
-  static const Color _darkGreen = Color(0xFF1A3C34);
+  static const Color _brandColor = Color(0xFF04291A);
   static const Color _backgroundColor = Color(0xFFEDEBE7);
 
   @override
@@ -43,9 +43,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final auth = ref.read(authProvider);
     if (auth.isLoggedIn) {
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const PosDashboardScreen()),
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const PosDashboardScreen(),
+          transitionDuration: const Duration(milliseconds: 400),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
+        (_) => false,
       );
     }
   }
@@ -198,7 +206,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: _darkGreen, width: 1.5),
+              borderSide: const BorderSide(color: _brandColor, width: 1.5),
             ),
             contentPadding: const EdgeInsets.symmetric(
               vertical: 14,
@@ -277,7 +285,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: _darkGreen, width: 1.5),
+              borderSide: const BorderSide(color: _brandColor, width: 1.5),
             ),
             contentPadding: const EdgeInsets.symmetric(
               vertical: 14,
@@ -295,7 +303,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       child: ElevatedButton(
         onPressed: auth.isLoading ? null : _handleLogin,
         style: ElevatedButton.styleFrom(
-          backgroundColor: _darkGreen,
+          backgroundColor: _brandColor,
           foregroundColor: Colors.white,
           disabledBackgroundColor: Colors.grey[300],
           padding: const EdgeInsets.symmetric(vertical: 16),

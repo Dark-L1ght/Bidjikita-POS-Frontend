@@ -102,9 +102,21 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
               Navigator.pop(ctx);
               await ref.read(authProvider.notifier).logout();
               if (mounted) {
-                Navigator.pushReplacement(
+                Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        const LoginScreen(),
+                    transitionDuration: const Duration(milliseconds: 400),
+                    transitionsBuilder:
+                        (context, animation, secondaryAnimation, child) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: child,
+                          );
+                        },
+                  ),
+                  (_) => false,
                 );
               }
             },
@@ -299,6 +311,14 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
                 ),
                 const PopupMenuDivider(height: 1),
                 PopupMenuItem<_ProfileAction>(
+                  enabled: false,
+                  child: Text(
+                    'v1.0.0',
+                    style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+                  ),
+                ),
+                const PopupMenuDivider(height: 1),
+                PopupMenuItem<_ProfileAction>(
                   value: _ProfileAction.logout,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -357,13 +377,31 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
           child: Container(color: Colors.grey[200], height: 1),
         ),
       ),
-      body: const Row(
+      body: const _DashboardBody(),
+    );
+  }
+}
+
+class _DashboardBody extends StatelessWidget {
+  const _DashboardBody();
+
+  @override
+  Widget build(BuildContext context) {
+    try {
+      return const Row(
         children: [
           Expanded(flex: 3, child: CatalogPanel()),
           Expanded(flex: 1, child: CartPanel()),
         ],
-      ),
-    );
+      );
+    } catch (_) {
+      return const Center(
+        child: Text(
+          'Terjadi kesalahan. Silakan muat ulang.',
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
   }
 }
 

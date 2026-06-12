@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_user.dart';
 import '../services/api_service.dart';
+import '../utils/logger.dart';
 
 @immutable
 class AuthState {
@@ -58,8 +59,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
           ),
         );
       }
-    } catch (_) {
-      // Silently ignore — user will log in manually.
+    } catch (e) {
+      logError('Failed to load saved session', e);
     }
   }
 
@@ -96,7 +97,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await prefs.remove('user_full_name');
       await prefs.remove('username');
       await prefs.remove('role_name');
-    } catch (_) {}
+    } catch (e) {
+      logError('Failed to clear session prefs', e);
+    }
     state = const AuthState();
   }
 }

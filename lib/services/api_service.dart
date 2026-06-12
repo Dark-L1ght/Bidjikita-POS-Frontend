@@ -18,6 +18,21 @@ class ApiException implements Exception {
 class ApiService {
   ApiService._();
 
+  static Future<T> _withRetry<T>(
+    Future<T> Function() call, {
+    int attempts = 2,
+  }) async {
+    for (var i = 0; i < attempts; i++) {
+      try {
+        return await call();
+      } catch (_) {
+        if (i == attempts - 1) rethrow;
+        await Future.delayed(const Duration(seconds: 1));
+      }
+    }
+    throw const ApiException('Retry exhausted');
+  }
+
   static Map<String, String> _headers({String? token}) {
     return {
       'Content-Type': 'application/json',
@@ -53,54 +68,64 @@ class ApiService {
   // ── Products ─────────────────────────────────────────────────────────────────
 
   static Future<List<Product>> getProducts({String? token}) async {
-    final res = await http
-        .get(
-          Uri.parse('${AppConfig.baseUrl}/api/products'),
-          headers: _headers(token: token),
-        )
-        .timeout(const Duration(seconds: 15));
+    return _withRetry(() async {
+      final res = await http
+          .get(
+            Uri.parse('${AppConfig.baseUrl}/api/products'),
+            headers: _headers(token: token),
+          )
+          .timeout(const Duration(seconds: 15));
 
-    if (res.statusCode != 200) {
-      throw const ApiException('Gagal memuat produk');
-    }
-    final list = jsonDecode(res.body) as List<dynamic>;
-    return list.map((e) => Product.fromApi(e as Map<String, dynamic>)).toList();
+      if (res.statusCode != 200) {
+        throw const ApiException('Gagal memuat produk');
+      }
+      final list = jsonDecode(res.body) as List<dynamic>;
+      return list
+          .map((e) => Product.fromApi(e as Map<String, dynamic>))
+          .toList();
+    });
   }
 
   // ── Categories ───────────────────────────────────────────────────────────────
 
   static Future<List<String>> getCategories({String? token}) async {
-    final res = await http
-        .get(
-          Uri.parse('${AppConfig.baseUrl}/api/categories'),
-          headers: _headers(token: token),
-        )
-        .timeout(const Duration(seconds: 10));
+    return _withRetry(() async {
+      final res = await http
+          .get(
+            Uri.parse('${AppConfig.baseUrl}/api/categories'),
+            headers: _headers(token: token),
+          )
+          .timeout(const Duration(seconds: 10));
 
-    if (res.statusCode != 200) {
-      throw const ApiException('Gagal memuat kategori');
-    }
-    final list = jsonDecode(res.body) as List<dynamic>;
-    return list
-        .map((c) => (c as Map<String, dynamic>)['category_name'] as String)
-        .toList();
+      if (res.statusCode != 200) {
+        throw const ApiException('Gagal memuat kategori');
+      }
+      final list = jsonDecode(res.body) as List<dynamic>;
+      return list
+          .map((c) => (c as Map<String, dynamic>)['category_name'] as String)
+          .toList();
+    });
   }
 
   // ── Bundles ───────────────────────────────────────────────────────────────────
 
   static Future<List<Bundle>> getBundles({String? token}) async {
-    final res = await http
-        .get(
-          Uri.parse('${AppConfig.baseUrl}/api/bundles'),
-          headers: _headers(token: token),
-        )
-        .timeout(const Duration(seconds: 15));
+    return _withRetry(() async {
+      final res = await http
+          .get(
+            Uri.parse('${AppConfig.baseUrl}/api/bundles'),
+            headers: _headers(token: token),
+          )
+          .timeout(const Duration(seconds: 15));
 
-    if (res.statusCode != 200) {
-      throw const ApiException('Gagal memuat bundel');
-    }
-    final list = jsonDecode(res.body) as List<dynamic>;
-    return list.map((b) => Bundle.fromJson(b as Map<String, dynamic>)).toList();
+      if (res.statusCode != 200) {
+        throw const ApiException('Gagal memuat bundel');
+      }
+      final list = jsonDecode(res.body) as List<dynamic>;
+      return list
+          .map((b) => Bundle.fromJson(b as Map<String, dynamic>))
+          .toList();
+    });
   }
 
   // ── Orders ───────────────────────────────────────────────────────────────────

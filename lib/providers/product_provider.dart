@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/bundle.dart';
 import '../models/product.dart';
 import '../services/api_service.dart';
+import '../utils/logger.dart';
 import 'auth_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -18,8 +19,9 @@ class ProductNotifier extends AsyncNotifier<List<Product>> {
     List<Bundle> bundles;
     try {
       bundles = await ApiService.getBundles(token: token);
-    } catch (_) {
+    } catch (e) {
       bundles = [];
+      logError('Failed to fetch bundles', e);
     }
 
     final bundleProducts = bundles
@@ -39,8 +41,9 @@ class ProductNotifier extends AsyncNotifier<List<Product>> {
       List<Bundle> bundles;
       try {
         bundles = await ApiService.getBundles(token: token);
-      } catch (_) {
+      } catch (e) {
         bundles = [];
+        logError('Failed to fetch bundles', e);
       }
 
       final bundleProducts = bundles
