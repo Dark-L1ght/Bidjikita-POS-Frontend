@@ -19,6 +19,7 @@ class Product {
   final int originalPrice;
   final String? imageUrl;
   final String status;
+  final bool lowStock;
   final List<ProductVariant> variants;
 
   /// For bundle products only: the original [BundleItem] data used when
@@ -41,6 +42,7 @@ class Product {
     this.originalPrice = 0,
     this.imageUrl,
     this.status = 'available',
+    this.lowStock = false,
     this.variants = const [],
     this.bundleItems = const [],
   });
@@ -77,6 +79,7 @@ class Product {
       sugarLevels: const [],
       imageUrl: json['image_url'] as String?,
       status: (json['status'] as String?) ?? 'available',
+      lowStock: json['low_stock'] == true,
       variants: variants,
       bundleItems: const [],
     );

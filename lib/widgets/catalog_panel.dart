@@ -253,7 +253,44 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 22),
+                            // ── Stock warning ─────────────────────────────
+                            if (product.lowStock)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange[50],
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.orange[200]!,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.inventory_2_outlined,
+                                        size: 16,
+                                        color: Colors.orange[700],
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Stok bahan baku untuk menu ini menipis.\nPastikan ketersediaan sebelum memproses pesanan.',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.orange[900],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 16),
 
                             // ── Variant selection ────────────────────────
                             if (variants.length > 1) ...[
@@ -649,6 +686,28 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
                               ),
                             ),
                           ),
+                          if (product.lowStock)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.inventory_2_outlined,
+                                    size: 14,
+                                    color: Colors.orange[700],
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Stok bahan baku menipis',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.orange[700],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -1208,10 +1267,34 @@ class _ProductCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                  // Low-stock warning badge
+                  if (product.lowStock)
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[700],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'Stok Menipis',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                   // Bundle savings badge (only when there are savings)
                   if (product.isBundle && savings > 0)
                     Positioned(
-                      top: 12,
+                      top: product.lowStock ? 30 : 12,
                       right: 12,
                       child: Container(
                         padding: const EdgeInsets.symmetric(

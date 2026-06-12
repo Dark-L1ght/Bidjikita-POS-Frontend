@@ -222,6 +222,7 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
               onTap: () {
                 setState(() => _now = DateTime.now());
                 ref.read(productListProvider.notifier).refresh();
+                ref.invalidate(categoryListProvider);
               },
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
