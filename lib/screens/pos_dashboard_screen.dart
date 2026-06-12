@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/auth_provider.dart';
 import '../providers/network_provider.dart';
+import '../providers/product_provider.dart';
+import '../screens/login_screen.dart';
 import '../widgets/catalog_panel.dart';
 import '../widgets/cart_panel.dart';
 
@@ -50,7 +53,6 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Update every minute; also refresh on the next exact minute boundary.
     _scheduleClockUpdate();
   }
 
@@ -72,9 +74,54 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
     super.dispose();
   }
 
+  void _confirmLogout() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Keluar',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text('Yakin ingin keluar dari sesi ini?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF04291A),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await ref.read(authProvider.notifier).logout();
+              if (mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
+              }
+            },
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isConnected = ref.watch(isConnectedProvider);
+    final auth = ref.watch(authProvider);
+    final userName = auth.user?.fullName.isNotEmpty == true
+        ? auth.user!.fullName
+        : auth.user?.username ?? 'Kasir';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -86,7 +133,7 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
         toolbarHeight: 70,
         title: Row(
           children: [
-            // ── Logo & brand ───────────────────────────────────────────────
+            // ── Logo & brand ─────────────────────────────────────────────
             const Icon(Icons.eco, color: Color(0xFF04291A)),
             const SizedBox(width: 8),
             const Text(
@@ -99,7 +146,7 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
             ),
             const Spacer(),
 
-            // ── Menu / Dashboard tab toggle ────────────────────────────────
+            // ── Menu / Dashboard tab toggle ───────────────────────────────
             Container(
               decoration: BoxDecoration(
                 color: const Color(0xFFF1F3F2),
@@ -138,7 +185,7 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
             ),
             const SizedBox(width: 16),
 
-            // ── Date / time ────────────────────────────────────────────────
+            // ── Date / time ───────────────────────────────────────────────
             _Pill(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -158,9 +205,12 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
             ),
             const SizedBox(width: 8),
 
-            // ── Refresh ────────────────────────────────────────────────────
+            // ── Refresh products ──────────────────────────────────────────
             _PillButton(
-              onTap: () => setState(() => _now = DateTime.now()),
+              onTap: () {
+                setState(() => _now = DateTime.now());
+                ref.read(productListProvider.notifier).refresh();
+              },
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -175,7 +225,7 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
             ),
             const SizedBox(width: 8),
 
-            // ── Network indicator ──────────────────────────────────────────
+            // ── Network indicator ─────────────────────────────────────────
             _Pill(
               child: Icon(
                 isConnected ? Icons.wifi_rounded : Icons.wifi_off_rounded,
@@ -185,44 +235,119 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
             ),
             const SizedBox(width: 8),
 
-            // ── Notifications ──────────────────────────────────────────────
-            _PillButton(
-              onTap: () {},
-              child: const Icon(
-                Icons.notifications_none_rounded,
-                size: 17,
-                color: Colors.black54,
+            // Profile / dropdown
+            PopupMenuButton<_ProfileAction>(
+              offset: const Offset(0, 44),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-            ),
-            const SizedBox(width: 8),
-
-            // ── Profile ────────────────────────────────────────────────────
-            _PillButton(
-              onTap: () {},
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.account_circle_outlined,
-                    size: 17,
-                    color: Colors.black54,
+              elevation: 6,
+              color: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              onSelected: (action) {
+                if (action == _ProfileAction.logout) {
+                  _confirmLogout();
+                }
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem<_ProfileAction>(
+                  enabled: false,
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: const Color(0xFF04291A),
+                        child: Text(
+                          userName.isNotEmpty
+                              ? userName.characters.first.toUpperCase()
+                              : 'K',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              userName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            if ((auth.user?.roleName ?? '').isNotEmpty)
+                              Text(
+                                auth.user!.roleName,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(width: 6),
-                  Text(
-                    'Nabil',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.black87,
-                      fontWeight: FontWeight.w500,
+                ),
+                const PopupMenuDivider(height: 1),
+                PopupMenuItem<_ProfileAction>(
+                  value: _ProfileAction.logout,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.logout_rounded,
+                        size: 18,
+                        color: Colors.red[400],
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Keluar',
+                        style: TextStyle(
+                          color: Colors.red[400],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              child: _Pill(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.account_circle_outlined,
+                      size: 17,
+                      color: Colors.black54,
                     ),
-                  ),
-                  SizedBox(width: 3),
-                  Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 15,
-                    color: Colors.black54,
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Text(
+                      userName,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 15,
+                      color: Colors.black54,
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -232,8 +357,6 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
           child: Container(color: Colors.grey[200], height: 1),
         ),
       ),
-
-      // ── Split-screen body ────────────────────────────────────────────────
       body: const Row(
         children: [
           Expanded(flex: 3, child: CatalogPanel()),
@@ -244,9 +367,15 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
   }
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────
+// Profile dropdown action enum
+// ────────────────────────────────────────────────────────────
+
+enum _ProfileAction { logout }
+
 // Shared AppBar pill widgets
-// ──────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _Pill extends StatelessWidget {
   final Widget child;

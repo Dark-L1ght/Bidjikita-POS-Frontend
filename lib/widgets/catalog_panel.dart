@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../config/app_config.dart';
 import '../models/product.dart';
+import '../models/cart_item.dart';
+import '../models/product_variant.dart';
 import '../providers/cart_provider.dart';
 import '../providers/product_provider.dart';
 import '../utils/currency.dart';
@@ -39,21 +42,31 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
   // ──────────────────────────────────────────────────────────────────────────
   // "Add Order" dialog
   // ──────────────────────────────────────────────────────────────────────────
+
   void _showAddOrderDialog(BuildContext context, Product product) {
-    int quantity = 1;
-    String selectedSize = product.availableSizes.isNotEmpty
-        ? product.availableSizes.first
-        : '';
-    String selectedSugarLevel = product.sugarLevels.isNotEmpty
-        ? product.sugarLevels.first
-        : '';
+    final variants = product.variants;
     final noteController = TextEditingController();
+
+    // Selection state — single variant only.
+    int quantity = 1;
+    ProductVariant? selectedVariant = variants.isNotEmpty
+        ? variants.first
+        : null;
+
+    int computeEffectivePrice() {
+      return selectedVariant?.price ?? product.price;
+    }
+
+    List<int> buildVariantIds() {
+      return selectedVariant != null ? [selectedVariant!.id] : [];
+    }
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
-          final totalPrice = product.price * quantity;
+          final effectivePrice = computeEffectivePrice();
+          final totalPrice = effectivePrice * quantity;
 
           return Dialog(
             backgroundColor: Colors.white,
@@ -121,7 +134,7 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
                     ),
                     const Divider(height: 1),
 
-                    // ── Scrollable body ───────────────────────────────────
+                    // ── Scrollable body ────────────────────────────────────
                     Flexible(
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.all(20),
@@ -137,17 +150,42 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
                               ),
                               child: Row(
                                 children: [
-                                  Container(
-                                    width: 72,
-                                    height: 72,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[200],
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(
-                                      Icons.coffee,
-                                      size: 36,
-                                      color: Color(0xFF8B4513),
+                                  // Product image / icon
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: SizedBox(
+                                      width: 72,
+                                      height: 72,
+                                      child: product.imageUrl != null
+                                          ? Image.network(
+                                              '${AppConfig.baseUrl}${product.imageUrl}',
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, _, _) =>
+                                                  product.isBundle &&
+                                                      product
+                                                          .bundleItems
+                                                          .isNotEmpty
+                                                  ? _BundleCollage(
+                                                      product: product,
+                                                    )
+                                                  : const Center(
+                                                      child: Icon(
+                                                        Icons.coffee,
+                                                        color: Colors.white30,
+                                                        size: 40,
+                                                      ),
+                                                    ),
+                                            )
+                                          : product.isBundle &&
+                                                product.bundleItems.isNotEmpty
+                                          ? _BundleCollage(product: product)
+                                          : const Center(
+                                              child: Icon(
+                                                Icons.coffee,
+                                                color: Colors.white30,
+                                                size: 40,
+                                              ),
+                                            ),
                                     ),
                                   ),
                                   const SizedBox(width: 14),
@@ -169,7 +207,7 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
                                               MainAxisAlignment.spaceBetween,
                                           children: [
                                             Text(
-                                              formatRupiah(product.price),
+                                              formatRupiah(effectivePrice),
                                               style: const TextStyle(
                                                 fontWeight: FontWeight.w600,
                                                 fontSize: 15,
@@ -217,34 +255,95 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
                             ),
                             const SizedBox(height: 22),
 
-                            // ── Cup size ──────────────────────────────────
-                            if (product.availableSizes.length > 1) ...[
-                              _sectionLabel('Select a Cup', required: true),
+                            // ── Variant selection ────────────────────────
+                            if (variants.length > 1) ...[
+                              _sectionLabel('Pilih Varian', required: true),
                               const SizedBox(height: 10),
-                              _radioGroup(
-                                items: product.availableSizes,
-                                selected: selectedSize,
-                                onSelect: (v) =>
-                                    setDialogState(() => selectedSize = v),
-                              ),
-                              const SizedBox(height: 22),
+                              ...variants.map((v) {
+                                final isSelected = selectedVariant?.id == v.id;
+                                return GestureDetector(
+                                  onTap: () => setDialogState(() {
+                                    selectedVariant = v;
+                                  }),
+                                  child: Container(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? const Color(0xFFEBF5F0)
+                                          : Colors.white,
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? const Color(0xFF04291A)
+                                            : Colors.grey[300]!,
+                                        width: isSelected ? 1.5 : 1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Container(
+                                              width: 18,
+                                              height: 18,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                  color: isSelected
+                                                      ? const Color(0xFF04291A)
+                                                      : Colors.grey[400]!,
+                                                  width: 2,
+                                                ),
+                                              ),
+                                              child: isSelected
+                                                  ? Center(
+                                                      child: Container(
+                                                        width: 10,
+                                                        height: 10,
+                                                        decoration:
+                                                            const BoxDecoration(
+                                                              shape: BoxShape
+                                                                  .circle,
+                                                              color: Color(
+                                                                0xFF04291A,
+                                                              ),
+                                                            ),
+                                                      ),
+                                                    )
+                                                  : null,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              v.variantName,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        if (v.price > 0)
+                                          Text(
+                                            formatRupiah(v.price),
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }),
+                              const SizedBox(height: 14),
                             ],
 
-                            // ── Sugar level ───────────────────────────────
-                            if (product.sugarLevels.isNotEmpty) ...[
-                              _sectionLabel('Sugar Level', required: true),
-                              const SizedBox(height: 10),
-                              _radioGroup(
-                                items: product.sugarLevels,
-                                selected: selectedSugarLevel,
-                                onSelect: (v) => setDialogState(
-                                  () => selectedSugarLevel = v,
-                                ),
-                              ),
-                              const SizedBox(height: 22),
-                            ],
-
-                            // ── Notes ─────────────────────────────────────
+                            // ── Notes ────────────────────────────────────────
                             _sectionLabel('Catatan', required: false),
                             const SizedBox(height: 10),
                             TextField(
@@ -284,7 +383,7 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
                       ),
                     ),
 
-                    // ── Add to Order button ───────────────────────────────
+                    // ── Add to Order button ────────────────────────────────
                     Container(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                       child: SizedBox(
@@ -300,15 +399,28 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
                             elevation: 0,
                           ),
                           onPressed: () {
-                            ref
-                                .read(cartProvider.notifier)
-                                .addItem(
-                                  product,
-                                  selectedSize,
-                                  selectedSugarLevel,
-                                  noteController.text,
-                                  quantity: quantity,
-                                );
+                            if (product.isBundle &&
+                                product.bundleItems.isNotEmpty) {
+                              // Expand bundle into individual items.
+                              _addBundleToCart(
+                                ctx,
+                                product,
+                                quantity,
+                                noteController,
+                              );
+                            } else {
+                              ref
+                                  .read(cartProvider.notifier)
+                                  .addItem(
+                                    product,
+                                    selectedVariant?.variantName ?? '',
+                                    '',
+                                    noteController.text,
+                                    quantity: quantity,
+                                    effectivePrice: effectivePrice,
+                                    selectedVariantIds: buildVariantIds(),
+                                  );
+                            }
                             Navigator.pop(ctx);
                             _showAddedSnackbar(context, product.name);
                           },
@@ -332,7 +444,76 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
     );
   }
 
+  /// Adds a bundle as a single cart item with its expanded sub-items.
+  void _addBundleToCart(
+    BuildContext dialogContext,
+    Product bundleProduct,
+    int bundleQuantity,
+    TextEditingController noteController,
+  ) {
+    final allProducts =
+        ref.read(productListProvider).valueOrNull ?? <Product>[];
+    final subItems = <BundleSubItem>[];
+
+    for (final bi in bundleProduct.bundleItems) {
+      final realProduct = allProducts.cast<Product?>().firstWhere(
+        (p) => p?.apiId == bi.productId,
+        orElse: () => null,
+      );
+      if (realProduct == null) continue;
+
+      // Resolve variant name — the backend may not include it when
+      // the bundle item was created without an explicit variant_id.
+      String? variantName = bi.variantName;
+      if (variantName == null && realProduct.variants.isNotEmpty) {
+        if (bi.variantId != null) {
+          final match = realProduct.variants.cast<ProductVariant?>().firstWhere(
+            (v) => v?.id == bi.variantId,
+            orElse: () => null,
+          );
+          variantName = match?.variantName;
+        } else {
+          // Only one variant — that's the one being used.
+          variantName = realProduct.variants.first.variantName;
+        }
+      }
+
+      subItems.add(
+        BundleSubItem(
+          productId: bi.productId,
+          variantIds: bi.variantId != null ? <int>[bi.variantId!] : <int>[],
+          quantity: bi.quantity * bundleQuantity,
+          productName: realProduct.name,
+          variantName: variantName,
+        ),
+      );
+    }
+
+    if (subItems.isEmpty) return;
+
+    ref
+        .read(cartProvider.notifier)
+        .addItem(
+          bundleProduct,
+          '',
+          '',
+          noteController.text,
+          effectivePrice: bundleProduct.price,
+          bundleSubItems: subItems,
+        );
+  }
+
   void _showAddedSnackbar(BuildContext context, String name) {
+    // Narrow, left-aligned toast — right margin is calculated so the toast
+    // is ~360px wide regardless of screen size.
+    final screenWidth = MediaQuery.of(context).size.width;
+    const double leftInset = 24;
+    const double targetWidth = 360;
+    final rightInset = (screenWidth - leftInset - targetWidth).clamp(
+      24.0,
+      1200.0,
+    );
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -346,10 +527,10 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
         behavior: SnackBarBehavior.floating,
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           side: const BorderSide(color: Color(0xFF04291A), width: 1.2),
         ),
-        margin: const EdgeInsets.all(16),
+        margin: EdgeInsets.only(left: leftInset, right: rightInset, bottom: 24),
       ),
     );
   }
@@ -396,17 +577,36 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E3A2F),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: const Icon(
-                        Icons.coffee,
-                        color: Colors.white,
-                        size: 50,
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: SizedBox(
+                        width: 120,
+                        height: 120,
+                        child: product.imageUrl != null
+                            ? Image.network(
+                                '${AppConfig.baseUrl}${product.imageUrl}',
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) =>
+                                    product.isBundle &&
+                                        product.bundleItems.isNotEmpty
+                                    ? _BundleCollage(product: product)
+                                    : const Center(
+                                        child: Icon(
+                                          Icons.coffee,
+                                          color: Colors.white30,
+                                          size: 40,
+                                        ),
+                                      ),
+                              )
+                            : product.isBundle && product.bundleItems.isNotEmpty
+                            ? _BundleCollage(product: product)
+                            : const Center(
+                                child: Icon(
+                                  Icons.coffee,
+                                  color: Colors.white30,
+                                  size: 40,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(width: 20),
@@ -456,23 +656,40 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
                 ),
                 const SizedBox(height: 24),
                 _detailSection('Deskripsi', product.description),
-                const SizedBox(height: 20),
-                const Text(
-                  'Bahan-bahan',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-                const SizedBox(height: 8),
-                ...product.ingredients.map(
-                  (i) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      '• $i',
-                      style: const TextStyle(color: Colors.grey, fontSize: 14),
+                // ── Variant list ─────────────────────────────────────
+                if (product.variants.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Varian',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  const SizedBox(height: 8),
+                  ...product.variants.map(
+                    (v) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '• ${v.variantName}',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            formatRupiah(v.price),
+                            style: const TextStyle(
+                              color: Color(0xFF04291A),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                _detailSection('Tingkat Kafein', product.caffeineLevel),
+                ],
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -527,18 +744,14 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
   // ──────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    const categories = [
-      'Semua',
-      'Kopi',
-      'Non-Kopi',
-      'Makanan',
-      'Snack',
-      'Bundling',
-    ];
+    final categoriesAsync = ref.watch(categoryListProvider);
+    final categories =
+        categoriesAsync.valueOrNull ??
+        const ['Semua', 'Kopi', 'Non-Kopi', 'Makanan', 'Snack', 'Bundling'];
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final searchQuery = ref.watch(searchQueryProvider);
     final products = ref.watch(filteredProductsProvider);
-    final totalCount = ref.watch(productListProvider).length;
+    final totalCount = ref.watch(productListProvider).valueOrNull?.length ?? 0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -606,8 +819,8 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
                   border: Border.all(
                     color: _isFocused
                         ? const Color(0xFF04291A)
-                        : const Color(0xFFD1D5DB),
-                    width: 1.2,
+                        : const Color(0xFFDDDDDD),
+                    width: 1.5,
                   ),
                   boxShadow: _isFocused
                       ? [
@@ -707,27 +920,90 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
 
           // ── Product grid or empty state ───────────────────────────────
           Expanded(
-            child: products.isEmpty
-                ? _buildEmptySearch(searchQuery)
-                : GridView.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 4,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                          childAspectRatio: 0.82,
+            child: ref
+                .watch(productListProvider)
+                .when(
+                  loading: () => const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: Color(0xFF04291A)),
+                        SizedBox(height: 16),
+                        Text(
+                          'Memuat menu...',
+                          style: TextStyle(color: Colors.grey, fontSize: 13),
                         ),
-                    itemCount: products.length,
-                    itemBuilder: (context, index) {
-                      final prod = products[index];
-                      return _ProductCard(
-                        product: prod,
-                        searchQuery: searchQuery,
-                        onTap: () => _showProductDetail(context, prod),
-                        onAddToCart: () => _showAddOrderDialog(context, prod),
-                      );
-                    },
+                      ],
+                    ),
                   ),
+                  error: (e, _) => Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.cloud_off_rounded,
+                          size: 56,
+                          color: Colors.grey[300],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Gagal memuat menu',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          e.toString(),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[400],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF04291A),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () =>
+                              ref.read(productListProvider.notifier).refresh(),
+                          icon: const Icon(Icons.refresh_rounded, size: 16),
+                          label: const Text('Coba Lagi'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  data: (_) => products.isEmpty
+                      ? _buildEmptySearch(searchQuery)
+                      : GridView.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 4,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
+                                childAspectRatio: 0.82,
+                              ),
+                          itemCount: products.length,
+                          itemBuilder: (context, index) {
+                            final prod = products[index];
+                            return _ProductCard(
+                              product: prod,
+                              searchQuery: searchQuery,
+                              onTap: () => _showProductDetail(context, prod),
+                              onAddToCart: () =>
+                                  _showAddOrderDialog(context, prod),
+                            );
+                          },
+                        ),
+                ),
           ),
         ],
       ),
@@ -804,72 +1080,6 @@ Widget _sectionLabel(String title, {required bool required}) {
   );
 }
 
-/// Radio-style bordered list (single select).
-Widget _radioGroup({
-  required List<String> items,
-  required String selected,
-  required ValueChanged<String> onSelect,
-}) {
-  return Container(
-    decoration: BoxDecoration(
-      border: Border.all(color: Colors.grey[300]!),
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: Column(
-      children: items.asMap().entries.map((entry) {
-        final i = entry.key;
-        final item = entry.value;
-        final isSelected = selected == item;
-        return GestureDetector(
-          onTap: () => onSelect(item),
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              border: i < items.length - 1
-                  ? Border(bottom: BorderSide(color: Colors.grey[200]!))
-                  : null,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(item, style: const TextStyle(fontSize: 14)),
-                _radioIndicator(isSelected),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    ),
-  );
-}
-
-Widget _radioIndicator(bool isSelected) {
-  return Container(
-    width: 20,
-    height: 20,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      border: Border.all(
-        color: isSelected ? const Color(0xFF04291A) : Colors.grey[400]!,
-        width: 2,
-      ),
-    ),
-    child: isSelected
-        ? Center(
-            child: Container(
-              width: 10,
-              height: 10,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0xFF04291A),
-              ),
-            ),
-          )
-        : null,
-  );
-}
-
 Widget _stepperBtn({
   required IconData icon,
   required bool enabled,
@@ -942,21 +1152,67 @@ class _ProductCard extends StatelessWidget {
                           : const Color(0xFF1E3A2F),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Center(
-                      child: Icon(
-                        product.isBundle
-                            ? Icons.card_giftcard_rounded
-                            : Icons.coffee,
-                        color: Colors.white30,
-                        size: 40,
-                      ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: product.imageUrl != null
+                          ? Image.network(
+                              '${AppConfig.baseUrl}${product.imageUrl}',
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              errorBuilder: (_, _, _) =>
+                                  product.isBundle &&
+                                      product.bundleItems.isNotEmpty
+                                  ? _BundleCollage(product: product)
+                                  : Center(
+                                      child: Icon(
+                                        Icons.coffee,
+                                        color: Colors.white30,
+                                        size: 40,
+                                      ),
+                                    ),
+                            )
+                          : product.isBundle && product.bundleItems.isNotEmpty
+                          ? _BundleCollage(product: product)
+                          : Center(
+                              child: Icon(
+                                Icons.coffee,
+                                color: Colors.white30,
+                                size: 40,
+                              ),
+                            ),
                     ),
                   ),
-                  // Bundle savings badge
-                  if (product.isBundle && savings > 0)
+                  // Bundle badge — always shown on bundles so they're visually
+                  // distinct from regular products, even with a single item or no savings.
+                  if (product.isBundle)
                     Positioned(
                       top: 12,
                       left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF04291A),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Bundle',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  // Bundle savings badge (only when there are savings)
+                  if (product.isBundle && savings > 0)
+                    Positioned(
+                      top: 12,
+                      right: 12,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
@@ -1069,6 +1325,99 @@ class _ProductCard extends StatelessWidget {
     );
   }
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Bundle collage — renders product images in a grid
+// ──────────────────────────────────────────────────────────────────────────────
+
+class _BundleCollage extends ConsumerWidget {
+  final Product product;
+
+  const _BundleCollage({required this.product});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final allProducts =
+        ref.watch(productListProvider).valueOrNull ?? <Product>[];
+
+    // Collect image URLs from the bundle items' products.
+    final imageUrls = <String>[];
+    for (final bi in product.bundleItems) {
+      final p = allProducts.cast<Product?>().firstWhere(
+        (p) => p?.apiId == bi.productId,
+        orElse: () => null,
+      );
+      if (p?.imageUrl != null && p!.imageUrl!.isNotEmpty) {
+        imageUrls.add(p.imageUrl!);
+      }
+    }
+
+    if (imageUrls.isEmpty) {
+      return Center(
+        child: Icon(
+          Icons.card_giftcard_rounded,
+          color: Colors.white30,
+          size: 40,
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return _collageGrid(imageUrls, constraints);
+      },
+    );
+  }
+
+  Widget _collageGrid(List<String> urls, BoxConstraints constraints) {
+    final count = urls.length > 4 ? 4 : urls.length;
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              _collageCell(urls, 0),
+              if (count >= 2 && count != 3) _collageCell(urls, 1),
+            ],
+          ),
+        ),
+        if (count >= 3)
+          Expanded(
+            child: Row(
+              children: [
+                _collageCell(urls, count == 3 ? 1 : 2),
+                if (count >= 4) _collageCell(urls, 3),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _collageCell(List<String> urls, int index) {
+    if (index >= urls.length) {
+      return const SizedBox.shrink();
+    }
+    const border = Border(
+      right: BorderSide(color: Color(0x33FFFFFF), width: 0.5),
+      bottom: BorderSide(color: Color(0x33FFFFFF), width: 0.5),
+    );
+    return Expanded(
+      child: Container(
+        decoration: BoxDecoration(border: border),
+        child: Image.network(
+          '${AppConfig.baseUrl}${urls[index]}',
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => Center(
+            child: Icon(Icons.coffee, color: Colors.white24, size: 20),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 String _shortK(int amount) {
   if (amount >= 1000) return 'Rp ${(amount ~/ 1000)}K';

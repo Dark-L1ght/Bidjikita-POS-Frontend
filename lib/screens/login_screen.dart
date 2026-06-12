@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../providers/auth_provider.dart';
 import 'pos_dashboard_screen.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
@@ -24,23 +26,47 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _handleLogin() async {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
+
+    if (username.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Username dan kata sandi wajib diisi')),
+      );
+      return;
+    }
+
+    await ref.read(authProvider.notifier).login(username, password);
+
+    if (!mounted) return;
+
+    final auth = ref.read(authProvider);
+    if (auth.isLoggedIn) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const PosDashboardScreen()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final auth = ref.watch(authProvider);
+
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: Stack(
         children: [
-          // Background image
           Positioned.fill(
             child: Image.asset('assets/images/login_bg.png', fit: BoxFit.cover),
           ),
-          // Centered content
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(vertical: 32),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [_buildCard()],
+                children: [_buildCard(auth)],
               ),
             ),
           ),
@@ -49,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildCard() {
+  Widget _buildCard(AuthState auth) {
     return Container(
       width: 340,
       padding: const EdgeInsets.fromLTRB(32, 36, 32, 28),
@@ -81,8 +107,34 @@ class _LoginScreenState extends State<LoginScreen> {
           _buildUsernameField(),
           const SizedBox(height: 16),
           _buildPasswordField(),
+          if (auth.error != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, size: 16, color: Colors.red[600]),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      auth.error!,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: Colors.red[700],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
-          _buildLoginButton(),
+          _buildLoginButton(auth),
           const SizedBox(height: 24),
           _buildFooter(),
         ],
@@ -91,15 +143,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildLogo() {
-    return Column(
-      children: [
-        Image.asset(
-          'assets/images/bidjikita_logo.jpg',
-          width: 128,
-          height: 128,
-          fit: BoxFit.contain,
-        ),
-      ],
+    return Image.asset(
+      'assets/images/bidjikita_logo.jpg',
+      width: 128,
+      height: 128,
+      fit: BoxFit.contain,
     );
   }
 
@@ -108,7 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Username atau Email',
+          'Username',
           style: GoogleFonts.plusJakartaSans(
             fontSize: 13,
             fontWeight: FontWeight.w500,
@@ -166,34 +214,19 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Kata Sandi',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
-              ),
-            ),
-            GestureDetector(
-              onTap: () {},
-              child: Text(
-                'Lupa Kata Sandi?',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: _darkGreen,
-                ),
-              ),
-            ),
-          ],
+        Text(
+          'Kata Sandi',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey[700],
+          ),
         ),
         const SizedBox(height: 8),
         TextFormField(
           controller: _passwordController,
           obscureText: _obscurePassword,
+          onFieldSubmitted: (_) => _handleLogin(),
           style: GoogleFonts.plusJakartaSans(
             fontSize: 14,
             color: Colors.grey[800],
@@ -218,9 +251,7 @@ class _LoginScreenState extends State<LoginScreen> {
               minHeight: 0,
             ),
             suffixIcon: GestureDetector(
-              onTap: () {
-                setState(() => _obscurePassword = !_obscurePassword);
-              },
+              onTap: () => setState(() => _obscurePassword = !_obscurePassword),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Icon(
@@ -258,45 +289,49 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildLoginButton() {
+  Widget _buildLoginButton(AuthState auth) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () {
-          // Bypass login and navigate to POS Dashboard
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const PosDashboardScreen()),
-          );
-        },
+        onPressed: auth.isLoading ? null : _handleLogin,
         style: ElevatedButton.styleFrom(
           backgroundColor: _darkGreen,
           foregroundColor: Colors.white,
+          disabledBackgroundColor: Colors.grey[300],
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
           elevation: 0,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Masuk',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
+        child: auth.isLoading
+            ? const SizedBox(
+                height: 18,
+                width: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Masuk',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(
-              Icons.arrow_forward_rounded,
-              size: 18,
-              color: Colors.white,
-            ),
-          ],
-        ),
       ),
     );
   }

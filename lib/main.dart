@@ -1,8 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/pos_dashboard_screen.dart';
 
@@ -16,23 +16,25 @@ void main() {
   });
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider);
+
     return MaterialApp(
-      title: 'Bidjikita Coffee Roastery POS',
+      title: 'Bidjikita POS',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        colorSchemeSeed: const Color(0xFF04291A),
         scaffoldBackgroundColor: const Color(0xFFF8F9FA),
         textTheme: GoogleFonts.plusJakartaSansTextTheme(
           Theme.of(context).textTheme,
         ),
       ),
-      // kDebugMode is true when running via flutter run / emulator.
-      // Remove the ternary and keep LoginScreen() once login is wired up.
-      home: kDebugMode ? const PosDashboardScreen() : const LoginScreen(),
+      // Check if user is logged in; otherwise show LoginScreen.
+      home: auth.isLoggedIn ? const PosDashboardScreen() : const LoginScreen(),
     );
   }
 }

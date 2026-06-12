@@ -58,6 +58,8 @@ class ReceiptPrinter {
       // ── Order metadata ─────────────────────────────────────────────
       _pRow('No. Pesanan', r.orderId, small, bold),
       _pRow('Tanggal', _fmtDate(r.dateTime), small, small),
+      if (r.customerName.isNotEmpty)
+        _pRow('Pelanggan', r.customerName, small, small),
       _pRow('Kasir', r.cashierName, small, small),
       _pRow('Tipe', r.orderType, small, small),
       pw.SizedBox(height: 2),
@@ -79,9 +81,42 @@ class ReceiptPrinter {
 
       // ── Line items ─────────────────────────────────────────────────
       ...r.items.expand<pw.Widget>((item) {
+        // Bundle: show name + sub-items.
+        if (item.bundleSubItems.isNotEmpty) {
+          return [
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Expanded(
+                  flex: 6,
+                  child: pw.Text(item.product.name, style: normal),
+                ),
+                pw.Text('${item.quantity}x', style: normal),
+                pw.SizedBox(width: 6),
+                pw.Expanded(
+                  flex: 3,
+                  child: pw.Text(
+                    formatRupiah(item.subtotal),
+                    style: normal,
+                    textAlign: pw.TextAlign.right,
+                  ),
+                ),
+              ],
+            ),
+            ...item.bundleSubItems.map(
+              (sub) => pw.Text(
+                '  ${sub.productName}${sub.variantName != null && sub.variantName != sub.productName ? " - ${sub.variantName}" : ""} x${sub.quantity}',
+                style: small,
+              ),
+            ),
+            if (item.note.isNotEmpty)
+              pw.Text('  Catatan: ${item.note}', style: small),
+          ];
+        }
+
         final info = [
           if (item.size != 'Regular')
-            '  ${item.size}${item.sugarLevel.isNotEmpty ? " · ${item.sugarLevel}" : ""}',
+            '  ${item.size}${item.sugarLevel.isNotEmpty ? " - ${item.sugarLevel}" : ""}',
           if (item.note.isNotEmpty) '  Catatan: ${item.note}',
         ];
         return [
@@ -112,7 +147,6 @@ class ReceiptPrinter {
 
       // ── Totals ─────────────────────────────────────────────────────
       _pRow('Subtotal', formatRupiah(r.subtotal), normal, normal),
-      _pRow('Pajak 11%', formatRupiah(r.tax), normal, normal),
       pw.SizedBox(height: 2),
       thickDiv,
       _pRow('TOTAL', formatRupiah(r.total), bold, bold),

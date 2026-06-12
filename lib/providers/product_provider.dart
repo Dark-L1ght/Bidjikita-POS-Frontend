@@ -1,317 +1,110 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/bundle.dart';
 import '../models/product.dart';
-
-const _sugarLevels = ['Normal Sugar', 'Less Sugar', 'No Sugar'];
-const _beverageSizes = ['Small (Hot)', 'Medium (Iced)', 'Large (Iced)'];
+import '../services/api_service.dart';
+import 'auth_provider.dart';
 
 // ---------------------------------------------------------------------------
-// Dummy product catalogue
+// Product list — fetched from products API, merged with bundles
 // ---------------------------------------------------------------------------
-final productListProvider = Provider<List<Product>>((ref) {
-  return const [
-    // ── KOPI ───────────────────────────────────────────────────────────────
-    Product(
-      id: 'p1',
-      name: 'French Vanilla Fantasy',
-      price: 42000,
-      category: 'Kopi',
-      description:
-          'Perpaduan kopi Arabika premium dengan sentuhan vanilla manis yang khas. Cocok untuk kamu yang suka kopi dengan cita rasa lembut.',
-      ingredients: [
-        'Kopi Arabika',
-        'Ekstrak vanilla alami',
-        'Gula halus',
-        'Susu segar',
-      ],
-      caffeineLevel: 'Sedang',
-      availableSizes: _beverageSizes,
-      sugarLevels: _sugarLevels,
-    ),
-    Product(
-      id: 'p2',
-      name: 'Almond Amore',
-      price: 48000,
-      category: 'Kopi',
-      description:
-          'Espresso double shot dipadukan dengan susu almond yang lembut dan sedikit karamel.',
-      ingredients: ['Double espresso', 'Susu almond', 'Sirup karamel'],
-      caffeineLevel: 'Tinggi',
-      availableSizes: _beverageSizes,
-      sugarLevels: _sugarLevels,
-    ),
-    Product(
-      id: 'p3',
-      name: 'Irish Cream Infusion',
-      price: 52000,
-      category: 'Kopi',
-      description:
-          'Perpaduan mewah antara espresso dan rasa Irish cream yang kaya.',
-      ingredients: [
-        'Espresso',
-        'Sirup Irish cream',
-        'Krim kental',
-        'Serutan cokelat',
-      ],
-      caffeineLevel: 'Tinggi',
-      availableSizes: _beverageSizes,
-      sugarLevels: _sugarLevels,
-    ),
-    Product(
-      id: 'p4',
-      name: 'Dark Roast Dynamite',
-      price: 32000,
-      category: 'Kopi',
-      description:
-          'Dark roast yang kuat dan bertenaga untuk kamu yang menginginkan intensitas penuh.',
-      ingredients: ['Kopi Arabika dark roast', 'Air panas'],
-      caffeineLevel: 'Sangat Tinggi',
-      availableSizes: _beverageSizes,
-      sugarLevels: _sugarLevels,
-    ),
-    Product(
-      id: 'p5',
-      name: 'Americano Classic',
-      price: 28000,
-      category: 'Kopi',
-      description:
-          'Espresso bersih yang diencerkan ke proporsi sempurna untuk rasa yang halus dan bersih.',
-      ingredients: ['Double espresso', 'Air panas'],
-      caffeineLevel: 'Tinggi',
-      availableSizes: _beverageSizes,
-      sugarLevels: _sugarLevels,
-    ),
-    Product(
-      id: 'p6',
-      name: 'Cappuccino Deluxe',
-      price: 35000,
-      category: 'Kopi',
-      description:
-          'Cappuccino Italia klasik dengan microfoam susu yang sempurna dan espresso yang kaya.',
-      ingredients: [
-        'Double espresso',
-        'Susu kukus',
-        'Busa susu',
-        'Bubuk kakao',
-      ],
-      caffeineLevel: 'Sedang',
-      availableSizes: _beverageSizes,
-      sugarLevels: _sugarLevels,
-    ),
-    // ── NON-KOPI ──────────────────────────────────────────────────────────
-    Product(
-      id: 'p7',
-      name: 'Matcha Latte',
-      price: 38000,
-      category: 'Non-Kopi',
-      description:
-          'Matcha seremonial premium Jepang dipadukan dengan susu kukus yang creamy.',
-      ingredients: ['Matcha seremonial grade', 'Susu kukus', 'Madu'],
-      caffeineLevel: 'Rendah',
-      availableSizes: _beverageSizes,
-      sugarLevels: _sugarLevels,
-    ),
-    Product(
-      id: 'p8',
-      name: 'Chocolate Velvet',
-      price: 35000,
-      category: 'Non-Kopi',
-      description:
-          'Minuman cokelat Belgia premium yang lembut seperti beludru.',
-      ingredients: ['Cokelat Belgia', 'Susu full cream', 'Krim kocok'],
-      caffeineLevel: 'Tidak Ada',
-      availableSizes: _beverageSizes,
-      sugarLevels: _sugarLevels,
-    ),
-    Product(
-      id: 'p9',
-      name: 'Taro Dream',
-      price: 36000,
-      category: 'Non-Kopi',
-      description:
-          'Talas ungu creamy yang diblender bersama susu segar untuk minuman berwarna ungu.',
-      ingredients: ['Bubuk talas', 'Susu segar', 'Gula', 'Es'],
-      caffeineLevel: 'Tidak Ada',
-      availableSizes: _beverageSizes,
-      sugarLevels: _sugarLevels,
-    ),
-    Product(
-      id: 'p10',
-      name: 'Raspberry Ripple',
-      price: 38000,
-      category: 'Non-Kopi',
-      description:
-          'Minuman raspberry menyegarkan dengan rasa asam-manis yang meledak di mulut.',
-      ingredients: ['Sirup raspberry', 'Air soda', 'Lemon segar', 'Daun mint'],
-      caffeineLevel: 'Tidak Ada',
-      availableSizes: _beverageSizes,
-      sugarLevels: _sugarLevels,
-    ),
-    // ── MAKANAN ───────────────────────────────────────────────────────────
-    Product(
-      id: 'p11',
-      name: 'Croissant Butter',
-      price: 25000,
-      category: 'Makanan',
-      description:
-          'Croissant segar yang dipanggang dengan lapisan mentega premium. Renyah di luar, lembut di dalam.',
-      ingredients: ['Tepung terigu', 'Mentega premium', 'Telur', 'Susu'],
-      caffeineLevel: 'Tidak Ada',
-      availableSizes: ['Regular'],
-    ),
-    Product(
-      id: 'p12',
-      name: 'Avocado Toast',
-      price: 35000,
-      category: 'Makanan',
-      description:
-          'Roti sourdough panggang dengan topping alpukat segar, garam laut, dan cabai merah.',
-      ingredients: [
-        'Roti sourdough',
-        'Alpukat segar',
-        'Garam laut',
-        'Lemon',
-        'Cabai merah',
-      ],
-      caffeineLevel: 'Tidak Ada',
-      availableSizes: ['Regular'],
-    ),
-    Product(
-      id: 'p13',
-      name: 'Banana Bread',
-      price: 22000,
-      category: 'Makanan',
-      description:
-          'Roti pisang lembab yang terbuat dari pisang matang dan rempah-rempah hangat.',
-      ingredients: [
-        'Pisang matang',
-        'Tepung',
-        'Telur',
-        'Mentega',
-        'Kayu manis',
-      ],
-      caffeineLevel: 'Tidak Ada',
-      availableSizes: ['Regular'],
-    ),
-    // ── BUNDLING ───────────────────────────────────────────────────────────
-    Product(
-      id: 'b1',
-      name: 'Morning Coffee Bundle',
-      price: 45000,
-      category: 'Bundling',
-      description:
-          'Paket sarapan sempurna: satu kopi pilihan dan satu croissant mentega yang hangat.',
-      ingredients: [],
-      caffeineLevel: 'Tinggi',
-      availableSizes: ['Regular'],
-      isBundle: true,
-      bundleContents: ['1× Americano Classic', '1× Croissant Butter'],
-      originalPrice: 53000,
-    ),
-    Product(
-      id: 'b2',
-      name: 'Sweet Escape Bundle',
-      price: 50000,
-      category: 'Bundling',
-      description:
-          'Matcha latte yang menenangkan dipadukan dengan brownies cokelat fudgy yang lezat.',
-      ingredients: [],
-      caffeineLevel: 'Rendah',
-      availableSizes: ['Regular'],
-      isBundle: true,
-      bundleContents: ['1× Matcha Latte', '1× Chocolate Brownies'],
-      originalPrice: 56000,
-    ),
-    Product(
-      id: 'b3',
-      name: "Couple's Bundle",
-      price: 68000,
-      category: 'Bundling',
-      description:
-          'Nikmati dua minuman kopi premium favorit bersama orang tersayang.',
-      ingredients: [],
-      caffeineLevel: 'Sedang',
-      availableSizes: ['Regular'],
-      isBundle: true,
-      bundleContents: ['1× Cappuccino Deluxe', '1× French Vanilla Fantasy'],
-      originalPrice: 77000,
-    ),
-    Product(
-      id: 'b4',
-      name: 'Afternoon Treat Bundle',
-      price: 65000,
-      category: 'Bundling',
-      description:
-          'Tiga pilihan nikmat untuk menemani soremu yang santai dan produktif.',
-      ingredients: [],
-      caffeineLevel: 'Tidak Ada',
-      availableSizes: ['Regular'],
-      isBundle: true,
-      bundleContents: [
-        '1× Chocolate Velvet',
-        '1× Banana Bread',
-        '1× Cinnamon Swirl',
-      ],
-      originalPrice: 77000,
-    ),
-    Product(
-      id: 'b5',
-      name: 'Power Up Bundle',
-      price: 55000,
-      category: 'Bundling',
-      description:
-          'Kombinasi sempurna antara kopi kuat dan makanan bergizi untuk harimu.',
-      ingredients: [],
-      caffeineLevel: 'Sangat Tinggi',
-      availableSizes: ['Regular'],
-      isBundle: true,
-      bundleContents: ['1× Dark Roast Dynamite', '1× Avocado Toast'],
-      originalPrice: 67000,
-    ),
-    // ── SNACK ─────────────────────────────────────────────────────────────
-    Product(
-      id: 'p14',
-      name: 'Cinnamon Swirl',
-      price: 20000,
-      category: 'Snack',
-      description: 'Pastri putar kayu manis yang hangat, ditaburi gula halus.',
-      ingredients: ['Tepung', 'Kayu manis', 'Gula merah', 'Mentega'],
-      caffeineLevel: 'Tidak Ada',
-      availableSizes: ['Regular'],
-    ),
-    Product(
-      id: 'p15',
-      name: 'Chocolate Brownies',
-      price: 18000,
-      category: 'Snack',
-      description:
-          'Brownies cokelat yang padat dan fudgy dengan bagian atas yang sedikit renyah.',
-      ingredients: ['Dark chocolate', 'Telur', 'Mentega', 'Gula', 'Tepung'],
-      caffeineLevel: 'Tidak Ada',
-      availableSizes: ['Regular'],
-    ),
-    Product(
-      id: 'p16',
-      name: 'White Choco Wonder',
-      price: 22000,
-      category: 'Snack',
-      description:
-          'Cookie putih cokelat creamy dengan kacang macadamia renyah.',
-      ingredients: [
-        'White chocolate',
-        'Kacang macadamia',
-        'Tepung',
-        'Mentega',
-        'Vanilla',
-      ],
-      caffeineLevel: 'Tidak Ada',
-      availableSizes: ['Regular'],
-    ),
-  ];
+
+class ProductNotifier extends AsyncNotifier<List<Product>> {
+  @override
+  Future<List<Product>> build() async {
+    final token = ref.watch(authProvider).token;
+    final products = await ApiService.getProducts(token: token);
+
+    // Fetch bundles and convert to Product-like objects.
+    List<Bundle> bundles;
+    try {
+      bundles = await ApiService.getBundles(token: token);
+    } catch (_) {
+      bundles = [];
+    }
+
+    final bundleProducts = bundles
+        .where((b) => b.items.isNotEmpty)
+        .map((b) => _bundleToProduct(b))
+        .toList();
+
+    return [...products, ...bundleProducts];
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final token = ref.read(authProvider).token;
+      final products = await ApiService.getProducts(token: token);
+
+      List<Bundle> bundles;
+      try {
+        bundles = await ApiService.getBundles(token: token);
+      } catch (_) {
+        bundles = [];
+      }
+
+      final bundleProducts = bundles
+          .where((b) => b.items.isNotEmpty)
+          .map((b) => _bundleToProduct(b))
+          .toList();
+
+      return [...products, ...bundleProducts];
+    });
+  }
+}
+
+/// Converts a backend [Bundle] into a [Product] for display in the catalog.
+///
+/// The product is marked `isBundle = true`, has no variants (fixed price), and
+/// its `bundleContents` list shows the names of the constituent items.
+Product _bundleToProduct(Bundle b) {
+  final contents = b.items.map((i) {
+    final name = i.productName.isNotEmpty ? i.productName : 'Item';
+    return i.quantity > 1 ? '$name \u00d7${i.quantity}' : name;
+  }).toList();
+
+  return Product(
+    id: 'bundle_${b.id}',
+    apiId: b.id, // note: not a real Product ID — bundle IDs are separate
+    name: b.bundleName,
+    price: b.bundlePrice,
+    category: 'Bundling',
+    description: b.description,
+    ingredients: contents,
+    caffeineLevel: '',
+    availableSizes: const [],
+    sugarLevels: const [],
+    isBundle: true,
+    bundleContents: contents,
+    originalPrice: b.bundlePrice + b.bundleProfit,
+    imageUrl: b.imageUrl,
+    status: 'available',
+    variants: const [],
+    bundleItems: b.items,
+  );
+}
+
+final productListProvider =
+    AsyncNotifierProvider<ProductNotifier, List<Product>>(ProductNotifier.new);
+
+// ---------------------------------------------------------------------------
+// Category list — fetched from the API, with 'Semua' and 'Bundling' prepended
+// ---------------------------------------------------------------------------
+
+final categoryListProvider = FutureProvider<List<String>>((ref) async {
+  final token = ref.watch(authProvider).token;
+  try {
+    final cats = await ApiService.getCategories(token: token);
+    return ['Semua', ...cats, 'Bundling'];
+  } catch (_) {
+    return const ['Semua', 'Kopi', 'Non-Kopi', 'Makanan', 'Snack', 'Bundling'];
+  }
 });
 
 // ---------------------------------------------------------------------------
 // Filters
 // ---------------------------------------------------------------------------
+
 final selectedCategoryProvider = StateProvider<String>((ref) => 'Semua');
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
@@ -319,7 +112,7 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 final filteredProductsProvider = Provider<List<Product>>((ref) {
   final category = ref.watch(selectedCategoryProvider);
   final query = ref.watch(searchQueryProvider).trim().toLowerCase();
-  final products = ref.watch(productListProvider);
+  final products = ref.watch(productListProvider).valueOrNull ?? [];
 
   var result = category == 'Semua'
       ? products

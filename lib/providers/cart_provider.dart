@@ -19,8 +19,7 @@ class CartState {
   const CartState({this.items = const [], this.orderType = OrderType.dineIn});
 
   int get subtotal => items.fold(0, (sum, item) => sum + item.subtotal);
-  int get tax => (subtotal * 0.11).round();
-  int get total => subtotal + tax;
+  int get total => subtotal;
   int get itemCount => items.fold(0, (sum, item) => sum + item.quantity);
 
   CartState copyWith({List<CartItem>? items, OrderType? orderType}) {
@@ -45,6 +44,9 @@ class CartNotifier extends StateNotifier<CartState> {
     String sugarLevel,
     String note, {
     int quantity = 1,
+    int? effectivePrice,
+    List<int> selectedVariantIds = const [],
+    List<BundleSubItem> bundleSubItems = const [],
   }) {
     final id = CartItem.buildId(product.id, size, sugarLevel, note);
     final existingIndex = state.items.indexWhere((item) => item.id == id);
@@ -66,6 +68,9 @@ class CartNotifier extends StateNotifier<CartState> {
             size: size,
             sugarLevel: sugarLevel,
             note: note.trim(),
+            effectivePrice: effectivePrice,
+            selectedVariantIds: selectedVariantIds,
+            bundleSubItems: bundleSubItems,
           ),
         ],
       );

@@ -1,29 +1,33 @@
 import 'package:flutter/foundation.dart';
+import 'bundle.dart';
+import 'product_variant.dart';
 
 @immutable
 class Product {
-  final String id;
+  final String id; // local string key
+  final int? apiId; // database integer ID
   final String name;
-  final int price; // base price in IDR
-  final String category; // 'Kopi', 'Non-Kopi', 'Makanan', 'Snack', 'Bundling'
+  final int price; // display price (cheapest variant price) in IDR
+  final String category;
   final String description;
   final List<String> ingredients;
   final String caffeineLevel;
   final List<String> availableSizes;
   final List<String> sugarLevels;
-
-  // ── Bundle-specific fields ────────────────────────────────────────────────
-  /// True when this product is a pre-defined bundle of two or more items.
   final bool isBundle;
-
-  /// Human-readable list of what's included, e.g. ["1× Americano", "1× Croissant"].
   final List<String> bundleContents;
-
-  /// Sum of individual item prices — used to show savings.  0 for non-bundles.
   final int originalPrice;
+  final String? imageUrl;
+  final String status;
+  final List<ProductVariant> variants;
+
+  /// For bundle products only: the original [BundleItem] data used when
+  /// expanding the bundle into individual order items.
+  final List<BundleItem> bundleItems;
 
   const Product({
     required this.id,
+    this.apiId,
     required this.name,
     required this.price,
     required this.category,
@@ -35,5 +39,46 @@ class Product {
     this.isBundle = false,
     this.bundleContents = const [],
     this.originalPrice = 0,
+    this.imageUrl,
+    this.status = 'available',
+    this.variants = const [],
+    this.bundleItems = const [],
   });
+
+  bool get isAvailable => status == 'available';
+
+  /// Build a [Product] from a backend API JSON object.
+  factory Product.fromApi(Map<String, dynamic> json) {
+    final rawVariants = (json['ProductVariants'] as List<dynamic>?) ?? [];
+    final variants = rawVariants
+        .map((v) => ProductVariant.fromJson(v as Map<String, dynamic>))
+        .toList();
+
+    // Display price = the cheapest variant price, or 0 if no variants.
+    final displayPrice = variants.isNotEmpty
+        ? variants.map((v) => v.price).reduce((a, b) => a < b ? a : b)
+        : 0;
+
+    final category =
+        (json['Category'] as Map<String, dynamic>?)?['category_name']
+            as String? ??
+        'Lainnya';
+
+    return Product(
+      id: json['id'].toString(),
+      apiId: json['id'] as int,
+      name: json['product_name'] as String,
+      price: displayPrice,
+      category: category,
+      description: (json['description'] as String?) ?? '',
+      ingredients: const [],
+      caffeineLevel: '',
+      availableSizes: variants.map((v) => v.variantName).toList(),
+      sugarLevels: const [],
+      imageUrl: json['image_url'] as String?,
+      status: (json['status'] as String?) ?? 'available',
+      variants: variants,
+      bundleItems: const [],
+    );
+  }
 }

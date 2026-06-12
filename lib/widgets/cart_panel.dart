@@ -4,10 +4,17 @@ import '../models/receipt.dart';
 import '../providers/cart_provider.dart';
 import '../services/receipt_printer.dart';
 import '../utils/currency.dart';
+import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 
-class CartPanel extends ConsumerWidget {
+class CartPanel extends ConsumerStatefulWidget {
   const CartPanel({super.key});
 
+  @override
+  ConsumerState<CartPanel> createState() => _CartPanelState();
+}
+
+class _CartPanelState extends ConsumerState<CartPanel> {
   // ──────────────────────────────────────────────────────────────────────────
   // Payment method selection
   // ──────────────────────────────────────────────────────────────────────────
@@ -16,98 +23,213 @@ class CartPanel extends ConsumerWidget {
     WidgetRef ref,
     CartState cart,
   ) {
+    final customerController = TextEditingController();
+    bool showKeyboard = true;
+
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Container(
-          width: 380,
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return Dialog(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Container(
+              width: 380,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'Pilih Metode Pembayaran',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(ctx),
-                    child: const Icon(
-                      Icons.close,
-                      size: 20,
-                      color: Colors.black54,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              // Total amount
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEBF5F0),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Total Pembayaran',
-                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                    ),
-                    Text(
-                      formatRupiah(cart.total),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF04291A),
+                  // Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Pilih Metode Pembayaran',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(ctx),
+                        child: const Icon(
+                          Icons.close,
+                          size: 20,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ── Customer name (optional) ────────────────────────────
+                  TextField(
+                    controller: customerController,
+                    readOnly: true,
+                    showCursor: true,
+                    autofocus: true,
+                    cursorWidth: 1.5,
+                    cursorColor: const Color(0xFF04291A),
+                    onTap: () => setDialogState(() => showKeyboard = true),
+                    decoration: InputDecoration(
+                      hintText: 'Nama pelanggan (opsional)',
+                      hintStyle: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 13,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.person_outline,
+                        size: 16,
+                        color: Colors.grey[500],
+                      ),
+                      prefixIconConstraints: const BoxConstraints(
+                        minWidth: 36,
+                        minHeight: 36,
+                      ),
+                      suffixIcon: customerController.text.isNotEmpty
+                          ? GestureDetector(
+                              onTap: () => setDialogState(
+                                () => customerController.clear(),
+                              ),
+                              child: Icon(
+                                Icons.cancel_rounded,
+                                size: 16,
+                                color: Colors.grey[400],
+                              ),
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: const Color(0xFFF5F5F5),
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF04291A)),
+                      ),
+                      isDense: true,
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Payment method cards
-              Row(
-                children: [
-                  Expanded(
-                    child: _PaymentMethodCard(
-                      icon: Icons.qr_code_2_rounded,
-                      label: 'QRIS',
-                      sublabel: 'Scan kode QR',
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        _showQrisDialog(context, ref, cart);
-                      },
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: customerController.text.isEmpty
+                          ? Colors.grey[400]
+                          : Colors.black87,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _PaymentMethodCard(
-                      icon: Icons.payments_outlined,
-                      label: 'Tunai',
-                      sublabel: 'Uang kas',
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        _showCashDialog(context, ref, cart);
-                      },
+                  const SizedBox(height: 8),
+
+                  // ── On-screen keyboard ──────────────────────────────────
+                  if (showKeyboard)
+                    _buildNameKeyboard(
+                      onKey: (key) => setDialogState(() {
+                        if (key == 'Done') {
+                          showKeyboard = false;
+                        } else if (key == '⌫') {
+                          if (customerController.text.isNotEmpty) {
+                            customerController.text = customerController.text
+                                .substring(
+                                  0,
+                                  customerController.text.length - 1,
+                                );
+                          }
+                        } else if (key == ' ') {
+                          customerController.text += ' ';
+                        } else {
+                          customerController.text += key;
+                        }
+                      }),
                     ),
+                  const SizedBox(height: 12),
+                  // Total amount
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEBF5F0),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Total Pembayaran',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        Text(
+                          formatRupiah(cart.total),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF04291A),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Payment method cards
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _PaymentMethodCard(
+                          icon: Icons.qr_code_2_rounded,
+                          label: 'QRIS',
+                          sublabel: 'Scan kode QR',
+                          onTap: () {
+                            final name = customerController.text.trim();
+                            Navigator.pop(ctx);
+                            _showQrisDialog(
+                              context,
+                              ref,
+                              cart,
+                              customerName: name,
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _PaymentMethodCard(
+                          icon: Icons.payments_outlined,
+                          label: 'Tunai',
+                          sublabel: 'Uang kas',
+                          onTap: () {
+                            final name = customerController.text.trim();
+                            Navigator.pop(ctx);
+                            _showCashDialog(
+                              context,
+                              ref,
+                              cart,
+                              customerName: name,
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -115,160 +237,187 @@ class CartPanel extends ConsumerWidget {
   // ──────────────────────────────────────────────────────────────────────────
   // QRIS dialog
   // ──────────────────────────────────────────────────────────────────────────
-  void _showQrisDialog(BuildContext context, WidgetRef ref, CartState cart) {
+  void _showQrisDialog(
+    BuildContext context,
+    WidgetRef ref,
+    CartState cart, {
+    String customerName = '',
+  }) {
+    bool isLoading = false;
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Container(
-          width: 380,
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Row(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return Dialog(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Container(
+              width: 380,
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _showPaymentMethodDialog(context, ref, cart);
-                    },
-                    child: const Icon(
-                      Icons.arrow_back_rounded,
-                      size: 20,
-                      color: Colors.black54,
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _showPaymentMethodDialog(context, ref, cart);
+                        },
+                        child: const Icon(
+                          Icons.arrow_back_rounded,
+                          size: 20,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Pembayaran QRIS',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(ctx),
+                        child: const Icon(
+                          Icons.close,
+                          size: 20,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEBF5F0),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Total Pembayaran',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          formatRupiah(cart.total),
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF04291A),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'Pembayaran QRIS',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  const SizedBox(height: 20),
+                  Container(
+                    width: 200,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F5F5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.qr_code_2_rounded,
+                          size: 80,
+                          color: Color(0xFF04291A),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Bidjikita Coffee Roastery',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Tambahkan qris_code.png\nke assets/images/',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 9,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(ctx),
-                    child: const Icon(
-                      Icons.close,
-                      size: 20,
-                      color: Colors.black54,
+                  const SizedBox(height: 10),
+                  Text(
+                    'Scan kode QR di atas dengan aplikasi pembayaran',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF04291A),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: isLoading
+                          ? null
+                          : () => _processPayment(
+                              ctx,
+                              cart,
+                              'qris',
+                              'QRIS',
+                              (loading) =>
+                                  setDialogState(() => isLoading = loading),
+                              customerName: customerName,
+                            ),
+                      icon: isLoading
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : const Icon(
+                              Icons.check_circle_outline_rounded,
+                              size: 18,
+                            ),
+                      label: const Text(
+                        'Konfirmasi Pembayaran',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              // Total
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEBF5F0),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      'Total Pembayaran',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      formatRupiah(cart.total),
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF04291A),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              // QRIS code
-              // ── TO ADD YOUR QRIS IMAGE ────────────────────────────────
-              // 1. Place your file at:  assets/images/qris_code.png
-              // 2. Register it in pubspec.yaml under flutter → assets
-              // 3. Replace the Container below with:
-              //    Image.asset('assets/images/qris_code.png', width: 200, height: 200)
-              // ─────────────────────────────────────────────────────────
-              Container(
-                width: 200,
-                height: 200,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F5F5),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.qr_code_2_rounded,
-                      size: 80,
-                      color: Color(0xFF04291A),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Bidjikita Coffee Roastery',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Tambahkan qris_code.png\nke assets/images/',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey[400], fontSize: 9),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Scan kode QR di atas dengan aplikasi pembayaran',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-              ),
-              const SizedBox(height: 20),
-              // Confirm button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF04291A),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    elevation: 0,
-                  ),
-                  onPressed: () {
-                    final receipt = _buildReceiptData(cart, 'QRIS');
-                    ref.read(cartProvider.notifier).clearCart();
-                    Navigator.pop(ctx);
-                    _showReceiptDialog(context, receipt);
-                  },
-                  icon: const Icon(
-                    Icons.check_circle_outline_rounded,
-                    size: 18,
-                  ),
-                  label: const Text(
-                    'Konfirmasi Pembayaran',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -276,7 +425,12 @@ class CartPanel extends ConsumerWidget {
   // ──────────────────────────────────────────────────────────────────────────
   // Cash dialog with custom numpad
   // ──────────────────────────────────────────────────────────────────────────
-  void _showCashDialog(BuildContext context, WidgetRef ref, CartState cart) {
+  void _showCashDialog(
+    BuildContext context,
+    WidgetRef ref,
+    CartState cart, {
+    String customerName = '',
+  }) {
     String cashStr = '0';
 
     showDialog(
@@ -561,19 +715,20 @@ class CartPanel extends ConsumerWidget {
                                 elevation: 0,
                               ),
                               onPressed: canConfirm
-                                  ? () {
-                                      final receipt = _buildReceiptData(
-                                        cart,
-                                        'Tunai',
-                                        cashReceived: cashAmount,
-                                        change: change,
-                                      );
-                                      ref
-                                          .read(cartProvider.notifier)
-                                          .clearCart();
-                                      Navigator.pop(ctx);
-                                      _showReceiptDialog(context, receipt);
-                                    }
+                                  ? () => _processPayment(
+                                      ctx,
+                                      cart,
+                                      'cash',
+                                      'Tunai',
+                                      (loading) => setDialogState(
+                                        () => cashStr = loading
+                                            ? 'loading'
+                                            : cashStr,
+                                      ),
+                                      customerName: customerName,
+                                      cashReceived: cashAmount,
+                                      change: change,
+                                    )
                                   : null,
                               icon: Icon(
                                 Icons.check_circle_outline_rounded,
@@ -645,26 +800,165 @@ class CartPanel extends ConsumerWidget {
     );
   }
 
+  /// On-screen QWERTY keyboard for customer name input.
+  Widget _buildNameKeyboard({required void Function(String) onKey}) {
+    final rows = [
+      ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+      ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+      ['Z', 'X', 'C', 'V', 'B', 'N', 'M', '⌫'],
+      [' ', 'Done'],
+    ];
+
+    return Column(
+      children: rows.map((row) {
+        return Row(
+          children: row.map((key) {
+            final isSpace = key == ' ';
+            final isDone = key == 'Done';
+
+            return Expanded(
+              flex: isSpace ? 8 : (isDone ? 3 : 1),
+              child: Padding(
+                padding: const EdgeInsets.all(3),
+                child: _NumpadKey(label: key, onTap: () => onKey(key)),
+              ),
+            );
+          }).toList(),
+        );
+      }).toList(),
+    );
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // Receipt dialog + preview
   // ──────────────────────────────────────────────────────────────────────────
+
+  /// Calls [createOrder] then [createTransaction], clears the cart,
+  /// pops the current dialog, and shows the receipt. Shows a SnackBar on error.
+  Future<void> _processPayment(
+    BuildContext dialogContext,
+    CartState cart,
+    String paymentMethod, // API value: 'cash' | 'qris' | 'debit' | 'credit'
+    String displayMethod, // UI label: 'Tunai' | 'QRIS'
+    void Function(bool) setLoading, {
+    String customerName = '',
+    int cashReceived = 0,
+    int change = 0,
+  }) async {
+    final token = ref.read(authProvider).token;
+
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sesi berakhir. Silakan login kembali.')),
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      final orderNumber = 'ORD-${DateTime.now().millisecondsSinceEpoch}';
+      // Build order items — bundles as a single line item, regular items as-is
+      final items = cart.items.map((item) {
+        if (item.bundleSubItems.isNotEmpty) {
+          return <String, dynamic>{
+            'bundle_id': item.product.apiId,
+            'bundle_name': item.product.name,
+            'bundle_price': item.effectivePrice,
+            'quantity': item.quantity,
+            'bundle_items': item.bundleSubItems
+                .map(
+                  (sub) => <String, dynamic>{
+                    'product_id': sub.productId,
+                    'quantity': sub.quantity,
+                    'variant_ids': sub.variantIds,
+                    'product_name': sub.productName,
+                    if (sub.variantName != null)
+                      'variant_name': sub.variantName,
+                  },
+                )
+                .toList(),
+            if (item.note.isNotEmpty) 'notes': item.note,
+          };
+        }
+        return <String, dynamic>{
+          'product_id':
+              item.product.apiId ?? int.tryParse(item.product.id) ?? 0,
+          'quantity': item.quantity,
+          'variant_ids': item.selectedVariantIds,
+          if (item.note.isNotEmpty) 'notes': item.note,
+        };
+      }).toList();
+
+      final order = await ApiService.createOrder(
+        token: token,
+        items: items,
+        orderNumber: orderNumber,
+      );
+      final orderId = order['id'] as int;
+
+      final tx = await ApiService.createTransaction(
+        token: token,
+        orderId: orderId,
+        paymentMethod: paymentMethod,
+      );
+      final invoiceNumber = tx['invoice_number'] as String?;
+
+      final receipt = _buildReceiptData(
+        cart,
+        displayMethod,
+        customerName: customerName,
+        cashReceived: cashReceived,
+        change: change,
+        invoiceNumber: invoiceNumber,
+      );
+
+      ref.read(cartProvider.notifier).clearCart();
+      if (dialogContext.mounted) Navigator.pop(dialogContext);
+      if (mounted) _showReceiptDialog(context, receipt);
+    } on ApiException catch (e) {
+      setLoading(false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: Colors.red[700]),
+        );
+      }
+    } catch (e) {
+      setLoading(false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Terjadi kesalahan: $e'),
+            backgroundColor: Colors.red[700],
+          ),
+        );
+      }
+    }
+  }
+
   ReceiptData _buildReceiptData(
     CartState cart,
     String paymentMethod, {
+    String customerName = '',
     int cashReceived = 0,
     int change = 0,
+    String? invoiceNumber,
   }) {
+    final user = ref.read(authProvider).user;
+    final cashierName = user?.fullName.isNotEmpty == true
+        ? user!.fullName
+        : user?.username ?? 'Kasir';
     return ReceiptData(
-      orderId: _generateOrderId(),
+      orderId: invoiceNumber ?? _generateOrderId(),
       dateTime: DateTime.now(),
       orderType: cart.orderType == OrderType.dineIn ? 'Dine In' : 'Takeaway',
       items: List.from(cart.items),
       subtotal: cart.subtotal,
-      tax: cart.tax,
       total: cart.total,
       paymentMethod: paymentMethod,
       cashReceived: cashReceived,
       change: change,
+      cashierName: cashierName,
+      customerName: customerName,
     );
   }
 
@@ -811,7 +1105,7 @@ class CartPanel extends ConsumerWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            'Jl. Coffee Street No. 1, Jakarta',
+            'Jl. Logam No.36, Kujangsari, Bandung',
             style: TextStyle(color: Colors.grey[600], fontSize: 10),
           ),
           const SizedBox(height: 8),
@@ -819,6 +1113,8 @@ class CartPanel extends ConsumerWidget {
           const SizedBox(height: 4),
           _previewRow('No. Pesanan', receipt.orderId),
           _previewRow('Tanggal', _receiptFmtDate(receipt.dateTime)),
+          if (receipt.customerName.isNotEmpty)
+            _previewRow('Pelanggan', receipt.customerName),
           _previewRow('Kasir', receipt.cashierName),
           _previewRow('Tipe', receipt.orderType),
           const SizedBox(height: 4),
@@ -826,13 +1122,58 @@ class CartPanel extends ConsumerWidget {
           const SizedBox(height: 4),
           // Items
           ...receipt.items.expand<Widget>((item) {
+            // Bundle items: show bundle name + sub-items.
+            if (item.bundleSubItems.isNotEmpty) {
+              return [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '1\u00d7  ${item.product.name}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      formatRupiah(item.subtotal),
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ],
+                ),
+                ...item.bundleSubItems.map(
+                  (sub) => Padding(
+                    padding: const EdgeInsets.only(left: 14, bottom: 1),
+                    child: Text(
+                      '${sub.productName}${sub.variantName != null && sub.variantName != sub.productName ? " - ${sub.variantName}" : ""} x${sub.quantity}',
+                      style: TextStyle(fontSize: 9, color: Colors.grey[500]),
+                    ),
+                  ),
+                ),
+                if (item.note.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 14),
+                    child: Text(
+                      '"${item.note}"',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: Colors.grey[500],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+              ];
+            }
+
             return [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
                     child: Text(
-                      '${item.quantity}×  ${item.product.name}',
+                      '${item.quantity}\u00d7  ${item.product.name}',
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -854,7 +1195,7 @@ class CartPanel extends ConsumerWidget {
                       [
                         item.size,
                         if (item.sugarLevel.isNotEmpty) item.sugarLevel,
-                      ].join(' · '),
+                      ].join(' . '),
                       style: TextStyle(fontSize: 9, color: Colors.grey[500]),
                     ),
                   ),
@@ -880,7 +1221,6 @@ class CartPanel extends ConsumerWidget {
           const Divider(height: 1, color: Colors.black26),
           const SizedBox(height: 4),
           _previewRow('Subtotal', formatRupiah(receipt.subtotal)),
-          _previewRow('Pajak 11%', formatRupiah(receipt.tax)),
           const SizedBox(height: 4),
           Container(height: 1.5, color: Colors.black87),
           const SizedBox(height: 4),
@@ -930,7 +1270,7 @@ class CartPanel extends ConsumerWidget {
   // Build
   // ──────────────────────────────────────────────────────────────────────────
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final cart = ref.watch(cartProvider);
 
     return Container(
@@ -1112,18 +1452,29 @@ class CartPanel extends ConsumerWidget {
                     child: Icon(
                       Icons.delete_outline,
                       color: Colors.red[300],
-                      size: 17,
+                      size: 20,
                     ),
                   ),
                 ],
               ),
-              Text(
-                [
-                  item.size,
-                  if (item.sugarLevel.isNotEmpty) item.sugarLevel,
-                ].join(' · '),
-                style: const TextStyle(color: Colors.grey, fontSize: 11),
-              ),
+              if (item.bundleSubItems.isNotEmpty)
+                ...item.bundleSubItems.map(
+                  (sub) => Padding(
+                    padding: const EdgeInsets.only(left: 4, bottom: 2),
+                    child: Text(
+                      '${sub.productName}${sub.variantName != null && sub.variantName != sub.productName ? " - ${sub.variantName}" : ""} x${sub.quantity}',
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
+                  ),
+                )
+              else
+                Text(
+                  [
+                    item.size,
+                    if (item.sugarLevel.isNotEmpty) item.sugarLevel,
+                  ].join(' . '),
+                  style: const TextStyle(color: Colors.grey, fontSize: 11),
+                ),
               if (item.note.isNotEmpty)
                 Text(
                   '"${item.note}"',
@@ -1223,10 +1574,6 @@ class CartPanel extends ConsumerWidget {
           _summaryRow(
             'Sub Total',
             cart.items.isEmpty ? '-' : formatRupiah(cart.subtotal),
-          ),
-          _summaryRow(
-            'Pajak 11%',
-            cart.items.isEmpty ? '-' : formatRupiah(cart.tax),
           ),
           const Divider(height: 16),
           _summaryRow(
