@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/receipt.dart';
 import '../providers/cart_provider.dart';
 import '../services/receipt_printer.dart';
+import '../services/thermal_printer.dart';
 import '../utils/currency.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
@@ -1071,9 +1072,248 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           elevation: 0,
                         ),
-                        onPressed: () {
-                          ReceiptPrinter.print(receipt);
-                          Navigator.pop(ctx);
+                        onPressed: () async {
+                          final ok = await ThermalPrinter.print(receipt);
+                          if (ok) {
+                            Navigator.pop(ctx);
+                            return;
+                          }
+                          final host = await ThermalPrinter.getPrinterHost();
+                          final btAddr =
+                              await ThermalPrinter.getBluetoothAddress();
+                          final isConfigured = host != null || btAddr != null;
+                          if (isConfigured && ctx.mounted) {
+                            final action = await showDialog<int>(
+                              context: ctx,
+                              builder: (c) => AlertDialog(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                title: const Text("Printer Tidak Terhubung"),
+                                content: const Text(
+                                  "Printer tidak dapat dijangkau. Periksa koneksi printer dan coba lagi.",
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(c, 0),
+                                    child: const Text("Simpan sebagai PDF"),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      ThermalPrinter.clearPrinter();
+                                      Navigator.pop(c, 1);
+                                    },
+                                    child: const Text("Ganti Printer"),
+                                  ),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Color(0xFF04291A),
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    onPressed: () => Navigator.pop(c, 2),
+                                    child: const Text("Coba Lagi"),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (action == 2) {
+                              if (await ThermalPrinter.print(receipt)) {
+                                Navigator.pop(ctx);
+                                return;
+                              }
+                            } else if (action != 1) {
+                              if (ctx.mounted) {
+                                ReceiptPrinter.print(receipt);
+                                Navigator.pop(ctx);
+                              }
+                              return;
+                            }
+                          }
+                          if (ctx.mounted) {
+                            final btDevices =
+                                await ThermalPrinter.getBondedDevices();
+                            final result =
+                                await showDialog<Map<String, String>>(
+                                  context: ctx,
+                                  builder: (c) => AlertDialog(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    title: const Text("Pengaturan Printer"),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          "Pilih jenis printer:",
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        if (btDevices.isNotEmpty) ...[
+                                          const Text(
+                                            "Bluetooth",
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          ...btDevices.map(
+                                            (d) => ListTile(
+                                              dense: true,
+                                              leading: const Icon(
+                                                Icons.bluetooth,
+                                                size: 20,
+                                              ),
+                                              title: Text(
+                                                d.name ?? "",
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                              subtitle: Text(
+                                                d.address,
+                                                style: const TextStyle(
+                                                  fontSize: 11,
+                                                ),
+                                              ),
+                                              onTap: () => Navigator.pop(c, {
+                                                "type": "bt",
+                                                "addr": d.address,
+                                              }),
+                                            ),
+                                          ),
+                                          const Divider(),
+                                        ],
+                                        InkWell(
+                                          onTap: () => Navigator.pop(c, {
+                                            "type": "network",
+                                          }),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 8,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.wifi,
+                                                  size: 20,
+                                                  color: Colors.grey[700],
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Text(
+                                                  "Printer Jaringan (WiFi)",
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: Colors.grey[700],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(c),
+                                        child: const Text("Simpan sebagai PDF"),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                            if (result != null &&
+                                result["type"] == "bt" &&
+                                result["addr"] != null) {
+                              await ThermalPrinter.saveBluetoothPrinter(
+                                result["addr"]!,
+                              );
+                            } else if (result != null &&
+                                result["type"] == "network" &&
+                                ctx.mounted) {
+                              final hostCtl = TextEditingController();
+                              final portCtl = TextEditingController(
+                                text: "9100",
+                              );
+                              final netResult = await showDialog<bool>(
+                                context: ctx,
+                                builder: (nc) => AlertDialog(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  title: const Text("Printer Jaringan"),
+                                  content: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      TextField(
+                                        controller: hostCtl,
+                                        decoration: const InputDecoration(
+                                          hintText: "192.168.1.100",
+                                          labelText: "Alamat IP",
+                                          border: OutlineInputBorder(),
+                                          isDense: true,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      TextField(
+                                        controller: portCtl,
+                                        decoration: const InputDecoration(
+                                          hintText: "9100",
+                                          labelText: "Port",
+                                          border: OutlineInputBorder(),
+                                          isDense: true,
+                                        ),
+                                        keyboardType: TextInputType.number,
+                                      ),
+                                    ],
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(nc, false),
+                                      child: const Text("Batal"),
+                                    ),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Color(0xFF04291A),
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                      ),
+                                      onPressed: () {
+                                        if (hostCtl.text.trim().isNotEmpty)
+                                          Navigator.pop(nc, true);
+                                      },
+                                      child: const Text("Simpan"),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (netResult == true) {
+                                await ThermalPrinter.saveNetworkPrinter(
+                                  hostCtl.text.trim(),
+                                  int.tryParse(portCtl.text) ?? 9100,
+                                );
+                              }
+                            }
+                          }
+                          if (ctx.mounted) {
+                            if (!await ThermalPrinter.print(receipt)) {
+                              ReceiptPrinter.print(receipt);
+                            }
+                            Navigator.pop(ctx);
+                          }
                         },
                         icon: const Icon(Icons.print_rounded, size: 18),
                         label: const Text(
@@ -1862,14 +2102,14 @@ String _receiptFmtDate(DateTime dt) {
     'Feb',
     'Mar',
     'Apr',
-    'May',
+    'Mei',
     'Jun',
     'Jul',
-    'Aug',
+    'Agt',
     'Sep',
-    'Oct',
+    'Okt',
     'Nov',
-    'Dec',
+    'Des',
   ];
   final h = dt.hour.toString().padLeft(2, '0');
   final m = dt.minute.toString().padLeft(2, '0');

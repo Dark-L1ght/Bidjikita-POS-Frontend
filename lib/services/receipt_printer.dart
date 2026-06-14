@@ -4,22 +4,17 @@ import 'package:printing/printing.dart';
 import '../models/receipt.dart';
 import '../utils/currency.dart';
 
-/// Generates a 58 mm thermal-receipt PDF and opens the system print dialog.
+/// Generates a receipt PDF (letter/A4 for the fallback path).
 class ReceiptPrinter {
-  // Standard 58mm thermal paper width.
-  // Change to 80 * PdfPageFormat.mm if your printer uses 80mm rolls.
-  static const double _paperWidth = 58 * PdfPageFormat.mm;
-  static const double _margin = 4 * PdfPageFormat.mm;
-
   static Future<void> print(ReceiptData receipt) async {
     final pdf = pw.Document(title: 'Struk_${receipt.orderId}');
 
     pdf.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat(
-          _paperWidth,
-          double.infinity,
-          marginAll: _margin,
+        pageFormat: const PdfPageFormat(
+          595.28, // A4 width in points
+          841.89, // A4 height in points
+          marginAll: 42.52, // ~1.5cm in points
         ),
         build: (ctx) => _buildContent(receipt),
       ),
@@ -35,11 +30,11 @@ class ReceiptPrinter {
   // Receipt content
   // ──────────────────────────────────────────────────────────────────────────
   static List<pw.Widget> _buildContent(ReceiptData r) {
-    final bold = pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8);
-    final normal = const pw.TextStyle(fontSize: 7.5);
-    final small = const pw.TextStyle(fontSize: 7);
-    final titleLg = pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11);
-    final titleSm = pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9);
+    final bold = pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11);
+    final normal = const pw.TextStyle(fontSize: 10);
+    final small = const pw.TextStyle(fontSize: 9);
+    final titleLg = pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18);
+    final titleSm = pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14);
     final div = pw.Divider(thickness: 0.5, color: PdfColors.grey700);
     final thickDiv = pw.Divider(thickness: 1.2, color: PdfColors.black);
 
@@ -205,14 +200,14 @@ class ReceiptPrinter {
       'Feb',
       'Mar',
       'Apr',
-      'May',
+      'Mei',
       'Jun',
       'Jul',
-      'Aug',
+      'Agt',
       'Sep',
-      'Oct',
+      'Okt',
       'Nov',
-      'Dec',
+      'Des',
     ];
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');

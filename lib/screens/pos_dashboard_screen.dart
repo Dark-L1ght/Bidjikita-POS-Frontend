@@ -21,27 +21,27 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
   DateTime _now = DateTime.now();
 
   static const _days = [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday',
+    'Senin',
+    'Selasa',
+    'Rabu',
+    'Kamis',
+    'Jumat',
+    'Sabtu',
+    'Minggu',
   ];
   static const _months = [
     'Jan',
     'Feb',
     'Mar',
     'Apr',
-    'May',
+    'Mei',
     'Jun',
     'Jul',
-    'Aug',
+    'Agt',
     'Sep',
-    'Oct',
+    'Okt',
     'Nov',
-    'Dec',
+    'Des',
   ];
 
   String get _formattedDateTime {
