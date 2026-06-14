@@ -6,35 +6,18 @@ import '../utils/logger.dart';
 import 'auth_provider.dart';
 
 // ---------------------------------------------------------------------------
-// Product list — fetched from products API, merged with bundles
+// Product list
 // ---------------------------------------------------------------------------
 
-class ProductNotifier extends AsyncNotifier<List<Product>> {
+class ProductNotifier extends Notifier<AsyncValue<List<Product>>> {
   @override
-  Future<List<Product>> build() async {
-    final token = ref.watch(authProvider).token;
-    final products = await ApiService.getProducts(token: token);
-
-    // Fetch bundles and convert to Product-like objects.
-    List<Bundle> bundles;
-    try {
-      bundles = await ApiService.getBundles(token: token);
-    } catch (e) {
-      bundles = [];
-      logError('Failed to fetch bundles', e);
-    }
-
-    final bundleProducts = bundles
-        .where((b) => b.items.isNotEmpty)
-        .map((b) => _bundleToProduct(b))
-        .toList();
-
-    return [...products, ...bundleProducts];
+  AsyncValue<List<Product>> build() {
+    _load();
+    return const AsyncLoading();
   }
 
-  Future<void> refresh() async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+  Future<void> _load() async {
+    try {
       final token = ref.read(authProvider).token;
       final products = await ApiService.getProducts(token: token);
 
@@ -42,8 +25,8 @@ class ProductNotifier extends AsyncNotifier<List<Product>> {
       try {
         bundles = await ApiService.getBundles(token: token);
       } catch (e) {
-        bundles = [];
         logError('Failed to fetch bundles', e);
+        bundles = [];
       }
 
       final bundleProducts = bundles
@@ -51,15 +34,43 @@ class ProductNotifier extends AsyncNotifier<List<Product>> {
           .map((b) => _bundleToProduct(b))
           .toList();
 
-      return [...products, ...bundleProducts];
-    });
+      state = AsyncData([...products, ...bundleProducts]);
+    } catch (e, st) {
+      logError('Failed to load products', e, st);
+      state = AsyncError(e, st);
+    }
   }
+
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    try {
+      final token = ref.read(authProvider).token;
+      final products = await ApiService.getProducts(token: token);
+
+      List<Bundle> bundles;
+      try {
+        bundles = await ApiService.getBundles(token: token);
+      } catch (e) {
+        logError('Failed to fetch bundles', e);
+        bundles = [];
+      }
+
+      final bundleProducts = bundles
+          .where((b) => b.items.isNotEmpty)
+          .map((b) => _bundleToProduct(b))
+          .toList();
+
+      state = AsyncData([...products, ...bundleProducts]);
+    } catch (e, st) {
+      logError('Failed to load products', e, st);
+      state = AsyncError(e, st);
+    }
+  }
+
+  void reset() => state = const AsyncLoading();
 }
 
 /// Converts a backend [Bundle] into a [Product] for display in the catalog.
-///
-/// The product is marked `isBundle = true`, has no variants (fixed price), and
-/// its `bundleContents` list shows the names of the constituent items.
 Product _bundleToProduct(Bundle b) {
   final contents = b.items.map((i) {
     final name = i.productName.isNotEmpty ? i.productName : 'Item';
@@ -68,7 +79,7 @@ Product _bundleToProduct(Bundle b) {
 
   return Product(
     id: 'bundle_${b.id}',
-    apiId: b.id, // note: not a real Product ID — bundle IDs are separate
+    apiId: b.id,
     name: b.bundleName,
     price: b.bundlePrice,
     category: 'Bundling',
@@ -88,10 +99,12 @@ Product _bundleToProduct(Bundle b) {
 }
 
 final productListProvider =
-    AsyncNotifierProvider<ProductNotifier, List<Product>>(ProductNotifier.new);
+    NotifierProvider<ProductNotifier, AsyncValue<List<Product>>>(
+      ProductNotifier.new,
+    );
 
 // ---------------------------------------------------------------------------
-// Category list — fetched from the API, with 'Semua' and 'Bundling' prepended
+// Category list
 // ---------------------------------------------------------------------------
 
 final categoryListProvider = FutureProvider<List<String>>((ref) async {
@@ -108,14 +121,26 @@ final categoryListProvider = FutureProvider<List<String>>((ref) async {
 // Filters
 // ---------------------------------------------------------------------------
 
-final selectedCategoryProvider = StateProvider<String>((ref) => 'Semua');
+class _CategoryFilter extends Notifier<String> {
+  @override
+  String build() => 'Semua';
+  void set(String cat) => state = cat;
+}
 
-final searchQueryProvider = StateProvider<String>((ref) => '');
+class _SearchFilter extends Notifier<String> {
+  @override
+  String build() => '';
+  void set(String q) => state = q;
+}
+
+final selectedCategoryProvider = NotifierProvider<_CategoryFilter, String>(_CategoryFilter.new);
+
+final searchQueryProvider = NotifierProvider<_SearchFilter, String>(_SearchFilter.new);
 
 final filteredProductsProvider = Provider<List<Product>>((ref) {
   final category = ref.watch(selectedCategoryProvider);
   final query = ref.watch(searchQueryProvider).trim().toLowerCase();
-  final products = ref.watch(productListProvider).valueOrNull ?? [];
+  final products = ref.watch(productListProvider).asData?.value ?? [];
 
   var result = category == 'Semua'
       ? products

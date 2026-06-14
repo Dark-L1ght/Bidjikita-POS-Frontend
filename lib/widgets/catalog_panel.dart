@@ -489,7 +489,7 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
     TextEditingController noteController,
   ) {
     final allProducts =
-        ref.read(productListProvider).valueOrNull ?? <Product>[];
+        ref.read(productListProvider).asData?.value ?? <Product>[];
     final subItems = <BundleSubItem>[];
 
     for (final bi in bundleProduct.bundleItems) {
@@ -805,12 +805,12 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
   Widget build(BuildContext context) {
     final categoriesAsync = ref.watch(categoryListProvider);
     final categories =
-        categoriesAsync.valueOrNull ??
+        categoriesAsync.asData?.value ??
         const ['Semua', 'Kopi', 'Non-Kopi', 'Makanan', 'Snack', 'Bundling'];
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final searchQuery = ref.watch(searchQueryProvider);
     final products = ref.watch(filteredProductsProvider);
-    final totalCount = ref.watch(productListProvider).valueOrNull?.length ?? 0;
+    final totalCount = ref.watch(productListProvider).asData?.value.length ?? 0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -847,11 +847,9 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
                             ),
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                           ),
-                          onPressed: () =>
-                              ref
-                                      .read(selectedCategoryProvider.notifier)
-                                      .state =
-                                  cat,
+                          onPressed: () => ref
+                              .read(selectedCategoryProvider.notifier)
+                              .set(cat),
                           child: Text(
                             cat,
                             style: const TextStyle(
@@ -897,7 +895,7 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
                   controller: _searchController,
                   focusNode: _focusNode,
                   onChanged: (v) =>
-                      ref.read(searchQueryProvider.notifier).state = v,
+                      ref.read(searchQueryProvider.notifier).set(v),
                   textAlignVertical: TextAlignVertical.center,
                   style: const TextStyle(
                     fontSize: 13,
@@ -934,8 +932,7 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
                               key: const ValueKey('clear_btn'),
                               onTap: () {
                                 _searchController.clear();
-                                ref.read(searchQueryProvider.notifier).state =
-                                    '';
+                                ref.read(searchQueryProvider.notifier).set('');
                               },
                               child: Icon(
                                 Icons.cancel_rounded,
@@ -1098,7 +1095,7 @@ class _CatalogPanelState extends ConsumerState<CatalogPanel> {
             TextButton.icon(
               onPressed: () {
                 _searchController.clear();
-                ref.read(searchQueryProvider.notifier).state = '';
+                ref.read(searchQueryProvider.notifier).set('');
               },
               icon: const Icon(Icons.close_rounded, size: 16),
               label: const Text('Hapus pencarian'),
@@ -1421,7 +1418,7 @@ class _BundleCollage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final allProducts =
-        ref.watch(productListProvider).valueOrNull ?? <Product>[];
+        ref.watch(productListProvider).asData?.value ?? <Product>[];
 
     // Collect image URLs from the bundle items' products.
     final imageUrls = <String>[];

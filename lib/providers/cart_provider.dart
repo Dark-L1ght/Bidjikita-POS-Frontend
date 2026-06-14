@@ -33,11 +33,10 @@ class CartState {
 // ---------------------------------------------------------------------------
 // Cart notifier
 // ---------------------------------------------------------------------------
-class CartNotifier extends StateNotifier<CartState> {
-  CartNotifier() : super(const CartState());
+class CartNotifier extends Notifier<CartState> {
+  @override
+  CartState build() => const CartState();
 
-  /// Adds [quantity] units with the given configuration.
-  /// Identical configurations (product + size + sugar + note) are merged.
   void addItem(
     Product product,
     String size,
@@ -94,7 +93,6 @@ class CartNotifier extends StateNotifier<CartState> {
     );
   }
 
-  /// Decrements quantity and auto-removes the row when it hits 0.
   void decrementQuantity(String itemId) {
     state = state.copyWith(
       items: state.items
@@ -117,6 +115,6 @@ class CartNotifier extends StateNotifier<CartState> {
 // ---------------------------------------------------------------------------
 // Provider
 // ---------------------------------------------------------------------------
-final cartProvider = StateNotifierProvider<CartNotifier, CartState>(
-  (ref) => CartNotifier(),
+final cartProvider = NotifierProvider<CartNotifier, CartState>(
+  CartNotifier.new,
 );
