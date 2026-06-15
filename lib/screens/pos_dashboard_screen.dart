@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../providers/network_provider.dart';
 import '../providers/product_provider.dart';
 import '../screens/login_screen.dart';
+import '../screens/settings_screen.dart';
 import '../widgets/catalog_panel.dart';
 import '../widgets/cart_panel.dart';
 
@@ -260,6 +261,11 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
               onSelected: (action) {
                 if (action == _ProfileAction.logout) {
                   _confirmLogout();
+                } else if (action == _ProfileAction.settings) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  );
                 }
               },
               itemBuilder: (_) => [
@@ -316,6 +322,31 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
                   child: Text(
                     'v1.0.0',
                     style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+                  ),
+                ),
+                const PopupMenuDivider(height: 1),
+                PopupMenuItem<_ProfileAction>(
+                  value: _ProfileAction.settings,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.settings_outlined,
+                        size: 18,
+                        color: Colors.grey[700],
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Pengaturan',
+                        style: TextStyle(
+                          color: Colors.grey[800],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const PopupMenuDivider(height: 1),
@@ -411,7 +442,7 @@ class _DashboardBody extends StatelessWidget {
 // Profile dropdown action enum
 // ────────────────────────────────────────────────────────────
 
-enum _ProfileAction { logout }
+enum _ProfileAction { settings, logout }
 
 // Shared AppBar pill widgets
 // ─────────────────────────────────────────────────────────────────────────────

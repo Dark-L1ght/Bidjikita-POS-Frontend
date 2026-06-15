@@ -4,6 +4,7 @@ import '../models/receipt.dart';
 import '../providers/cart_provider.dart';
 import '../services/receipt_printer.dart';
 import '../services/thermal_printer.dart';
+import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
 import '../utils/currency.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
@@ -1133,18 +1134,20 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                               return;
                             }
                           }
+                          String _paperSize = '58';
                           if (ctx.mounted) {
                             final btDevices =
                                 await ThermalPrinter.getBondedDevices();
-                            final result =
-                                await showDialog<Map<String, String>>(
-                                  context: ctx,
-                                  builder: (c) => AlertDialog(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    title: const Text("Pengaturan Printer"),
-                                    content: Column(
+                            final result = await showDialog<Map<String, String>>(
+                              context: ctx,
+                              builder: (c) => StatefulBuilder(
+                                builder: (context, setDialogState) => AlertDialog(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  title: const Text("Pengaturan Printer"),
+                                  content: SingleChildScrollView(
+                                    child: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
@@ -1157,6 +1160,56 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                                           ),
                                         ),
                                         const SizedBox(height: 12),
+                                        // ── Paper size ──
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 8,
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.straighten,
+                                                size: 16,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                "Ukuran Kertas:",
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey[600],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              ChoiceChip(
+                                                label: const Text(
+                                                  "58mm",
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
+                                                selected: _paperSize == "58",
+                                                onSelected: (_) =>
+                                                    setDialogState(
+                                                      () => _paperSize = "58",
+                                                    ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              ChoiceChip(
+                                                label: const Text(
+                                                  "80mm",
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
+                                                selected: _paperSize == "80",
+                                                onSelected: (_) =>
+                                                    setDialogState(
+                                                      () => _paperSize = "80",
+                                                    ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                         if (btDevices.isNotEmpty) ...[
                                           const Text(
                                             "Bluetooth",
@@ -1185,18 +1238,36 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                                                   fontSize: 11,
                                                 ),
                                               ),
-                                              onTap: () => Navigator.pop(c, {
-                                                "type": "bt",
-                                                "addr": d.address,
-                                              }),
+                                              onTap: () async {
+                                                await ThermalPrinter.setPaperSize(
+                                                  _paperSize == "80"
+                                                      ? PaperSize.mm80
+                                                      : PaperSize.mm58,
+                                                );
+                                                if (c.mounted) {
+                                                  Navigator.pop(c, {
+                                                    "type": "bt",
+                                                    "addr": d.address,
+                                                  });
+                                                }
+                                              },
                                             ),
                                           ),
                                           const Divider(),
                                         ],
                                         InkWell(
-                                          onTap: () => Navigator.pop(c, {
-                                            "type": "network",
-                                          }),
+                                          onTap: () async {
+                                            await ThermalPrinter.setPaperSize(
+                                              _paperSize == "80"
+                                                  ? PaperSize.mm80
+                                                  : PaperSize.mm58,
+                                            );
+                                            if (c.mounted) {
+                                              Navigator.pop(c, {
+                                                "type": "network",
+                                              });
+                                            }
+                                          },
                                           child: Padding(
                                             padding: const EdgeInsets.symmetric(
                                               vertical: 8,
@@ -1222,20 +1293,28 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                                         ),
                                       ],
                                     ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(c),
-                                        child: const Text("Simpan sebagai PDF"),
-                                      ),
-                                    ],
                                   ),
-                                );
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(c),
+                                      child: const Text("Simpan sebagai PDF"),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
                             if (result != null &&
                                 result["type"] == "bt" &&
                                 result["addr"] != null) {
                               await ThermalPrinter.saveBluetoothPrinter(
                                 result["addr"]!,
                               );
+                              if (ctx.mounted) {
+                                if (await ThermalPrinter.print(receipt)) {
+                                  Navigator.pop(ctx);
+                                  return;
+                                }
+                              }
                             } else if (result != null &&
                                 result["type"] == "network" &&
                                 ctx.mounted) {
@@ -1305,13 +1384,79 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                                   hostCtl.text.trim(),
                                   int.tryParse(portCtl.text) ?? 9100,
                                 );
+                                if (ctx.mounted) {
+                                  if (await ThermalPrinter.print(receipt)) {
+                                    Navigator.pop(ctx);
+                                    return;
+                                  }
+                                }
+                              }
+                            }
+                          }
+                          // If we reach here and printer is configured but print failed,
+                          // show the connection-error dialog again.
+                          if (ctx.mounted) {
+                            final btAddr =
+                                await ThermalPrinter.getBluetoothAddress();
+                            final host = await ThermalPrinter.getPrinterHost();
+                            final isConfigured = btAddr != null || host != null;
+                            if (isConfigured) {
+                              final action = await showDialog<int>(
+                                context: ctx,
+                                builder: (c) => AlertDialog(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  title: const Text("Printer Tidak Terhubung"),
+                                  content: const Text(
+                                    "Printer tidak dapat dijangkau. Periksa koneksi printer dan coba lagi.",
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(c, 0),
+                                      child: const Text("Simpan sebagai PDF"),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        ThermalPrinter.clearPrinter();
+                                        Navigator.pop(c, 1);
+                                      },
+                                      child: const Text("Ganti Printer"),
+                                    ),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(
+                                          0xFF04291A,
+                                        ),
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                      ),
+                                      onPressed: () => Navigator.pop(c, 2),
+                                      child: const Text("Coba Lagi"),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (action == 2) {
+                                if (await ThermalPrinter.print(receipt)) {
+                                  Navigator.pop(ctx);
+                                  return;
+                                }
+                              } else if (action != 1) {
+                                if (ctx.mounted) {
+                                  ReceiptPrinter.print(receipt);
+                                  Navigator.pop(ctx);
+                                }
+                                return;
                               }
                             }
                           }
                           if (ctx.mounted) {
-                            if (!await ThermalPrinter.print(receipt)) {
-                              ReceiptPrinter.print(receipt);
-                            }
                             Navigator.pop(ctx);
                           }
                         },

@@ -1,7 +1,11 @@
+import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
+import 'package:image/image.dart' as img;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/receipt.dart';
@@ -13,11 +17,30 @@ class ThermalPrinter {
   static const String _hostKey = 'printer_host';
   static const String _portKey = 'printer_port';
   static const String _btKey = 'printer_bt_address';
+  static const String _paperKey = 'paper_size';
   static const int _defaultPort = 9100;
 
   static String? _cachedHost;
   static int _cachedPort = _defaultPort;
   static String? _cachedBtAddress;
+  static PaperSize _paperSize = PaperSize.mm58;
+
+  static Future<void> setPaperSize(PaperSize size) async {
+    _paperSize = size;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_paperKey, size == PaperSize.mm58 ? '58' : '80');
+  }
+
+  static Future<void> _loadPaperSize() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getString(_paperKey);
+    _paperSize = val == '80' ? PaperSize.mm80 : PaperSize.mm58;
+  }
+
+  static Future<String> getPaperSize() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_paperKey) ?? '58';
+  }
 
   static Future<void> saveNetworkPrinter(String host, int port) async {
     _cachedHost = host;
@@ -53,14 +76,18 @@ class ThermalPrinter {
     return _cachedBtAddress;
   }
 
-  /// Requests Bluetooth permission (required for scanning on Android 12+).
+  /// Requests Bluetooth permission (required on Android 12+).
   /// Returns true if granted or already granted.
   static Future<bool> requestBluetoothPermission() async {
-    final status = await Permission.bluetoothConnect.request();
-    if (status.isGranted) return true;
-    // Fallback for Android < 12
-    final location = await Permission.locationWhenInUse.request();
-    return location.isGranted;
+    final connect = await Permission.bluetoothConnect.request();
+    if (!connect.isGranted) {
+      // Fallback for Android < 12
+      final location = await Permission.locationWhenInUse.request();
+      return location.isGranted;
+    }
+    // Android 12+ may also need BLUETOOTH_SCAN for some bonded operations.
+    final scan = await Permission.bluetoothScan.request();
+    return scan.isGranted || connect.isGranted;
   }
 
   static Future<List<BluetoothDevice>> getBondedDevices() async {
@@ -82,18 +109,63 @@ class ThermalPrinter {
     await prefs.remove(_btKey);
   }
 
+  static Future<void> clearNetworkPrinter() async {
+    _cachedHost = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_hostKey);
+    await prefs.remove(_portKey);
+  }
+
+  static Future<void> clearBluetoothPrinter() async {
+    _cachedBtAddress = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_btKey);
+  }
+
   /// Prints to Bluetooth printer. Returns true on success.
   static Future<bool> _printBluetooth(ReceiptData receipt) async {
     final address = await getBluetoothAddress();
-    if (address == null) return false;
+    if (address == null) {
+      log('ThermalPrinter: no BT address saved');
+      return false;
+    }
     try {
       final bytes = await _buildEscPos(receipt);
-      final conn = await BluetoothConnection.toAddress(address);
+      log('ThermalPrinter: connecting to $address ...');
+      final conn = await BluetoothConnection.toAddress(
+        address,
+      ).timeout(const Duration(seconds: 8));
+      if (!conn.isConnected) {
+        log('ThermalPrinter: connection failed (not connected)');
+        return false;
+      }
+      log('ThermalPrinter: connected, sending ${bytes.length} bytes');
       conn.output.add(Uint8List.fromList(bytes));
       await conn.output.allSent;
       await Future.delayed(const Duration(milliseconds: 500));
-      conn.finish();
+      await conn.finish();
+      log('ThermalPrinter: done');
       return true;
+    } on TimeoutException catch (e) {
+      log('ThermalPrinter: connection timed out — $e');
+      return false;
+    } catch (e, st) {
+      log('ThermalPrinter: BT print error — $e', stackTrace: st);
+      return false;
+    }
+  }
+
+  /// Tests whether the saved Bluetooth printer is reachable.
+  static Future<bool> testBluetoothConnection() async {
+    final address = await getBluetoothAddress();
+    if (address == null) return false;
+    try {
+      final conn = await BluetoothConnection.toAddress(
+        address,
+      ).timeout(const Duration(seconds: 5));
+      final ok = conn.isConnected;
+      if (ok) await conn.finish();
+      return ok;
     } catch (_) {
       return false;
     }
@@ -133,8 +205,9 @@ class ThermalPrinter {
 
   /// Generates ESC/POS byte sequence.
   static Future<List<int>> _buildEscPos(ReceiptData r) async {
+    await _loadPaperSize();
     final generator = await Generator(
-      PaperSize.mm58,
+      _paperSize,
       await CapabilityProfile.load(),
     );
 
@@ -142,18 +215,23 @@ class ThermalPrinter {
 
     void add(List<int> chunk) => bytes.addAll(chunk);
 
-    // ── Header ──
-    add(
-      generator.text(
-        'BIDJIKITA',
-        styles: const PosStyles(
-          bold: true,
-          align: PosAlign.center,
-          height: PosTextSize.size2,
-          width: PosTextSize.size2,
-        ),
-      ),
-    );
+    // ── Logo ──
+    try {
+      final logoData = await rootBundle.load(
+        'assets/images/bidjikita_logo.jpg',
+      );
+      final logoImg = img.decodeImage(logoData.buffer.asUint8List());
+      if (logoImg != null) {
+        final maxW = _paperSize == PaperSize.mm58 ? 200 : 280;
+        final resized = img.copyResize(logoImg, width: maxW);
+        final cropped = _cropBlankMargins(resized);
+        add(generator.image(cropped));
+      }
+    } catch (_) {
+      // Logo not available
+    }
+
+    // ── Header (text fallback) ──
     add(
       generator.text(
         'COFFEE ROASTERY',
@@ -171,7 +249,6 @@ class ThermalPrinter {
       ),
     );
     add(generator.hr());
-    add(generator.emptyLines(1));
 
     // ── Order info ──
     add(
@@ -381,7 +458,6 @@ class ThermalPrinter {
       );
     }
 
-    add(generator.emptyLines(2));
     add(
       generator.text(
         'Terima kasih atas kunjungan Anda!',
@@ -402,15 +478,15 @@ class ThermalPrinter {
         ),
       ),
     );
-    add(generator.emptyLines(1));
     add(
       generator.text(
         '-- BIDJIKITA COFFEE ROASTERY --',
         styles: const PosStyles(align: PosAlign.center, bold: true),
       ),
     );
-    add(generator.emptyLines(3));
-    add(generator.cut());
+    // Advance paper just enough for the cutter, then cut
+    add(generator.emptyLines(1));
+    add(generator.rawBytes([0x1D, 0x56, 0x00])); // GS V 0 (full cut)
 
     return bytes;
   }
@@ -433,5 +509,47 @@ class ThermalPrinter {
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}  $h:$m';
+  }
+
+  /// Crops blank (white) margins from the top and bottom of an image.
+  static img.Image _cropBlankMargins(img.Image src) {
+    int top = 0;
+    int bottom = src.height - 1;
+
+    // Find top non-blank row
+    for (int y = 0; y < src.height; y++) {
+      bool blank = true;
+      for (int x = 0; x < src.width; x++) {
+        final p = src.getPixel(x, y);
+        if (p.r < 240 || p.g < 240 || p.b < 240) {
+          blank = false;
+          break;
+        }
+      }
+      if (!blank) {
+        top = y;
+        break;
+      }
+    }
+
+    // Find bottom non-blank row
+    for (int y = src.height - 1; y >= 0; y--) {
+      bool blank = true;
+      for (int x = 0; x < src.width; x++) {
+        final p = src.getPixel(x, y);
+        if (p.r < 240 || p.g < 240 || p.b < 240) {
+          blank = false;
+          break;
+        }
+      }
+      if (!blank) {
+        bottom = y;
+        break;
+      }
+    }
+
+    final height = bottom - top + 1;
+    if (height <= 0 || height == src.height) return src;
+    return img.copyCrop(src, x: 0, y: top, width: src.width, height: height);
   }
 }
