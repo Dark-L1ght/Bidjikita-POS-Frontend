@@ -1075,7 +1075,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                         ),
                         onPressed: () async {
                           final ok = await ThermalPrinter.print(receipt);
-                          if (ok) {
+                          if (ok && ctx.mounted) {
                             Navigator.pop(ctx);
                             return;
                           }
@@ -1122,7 +1122,8 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                               ),
                             );
                             if (action == 2) {
-                              if (await ThermalPrinter.print(receipt)) {
+                              if (await ThermalPrinter.print(receipt) &&
+                                  ctx.mounted) {
                                 Navigator.pop(ctx);
                                 return;
                               }
@@ -1134,10 +1135,11 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                               return;
                             }
                           }
-                          String _paperSize = '58';
+                          String paperSize = '58';
                           if (ctx.mounted) {
                             final btDevices =
                                 await ThermalPrinter.getBondedDevices();
+                            if (!ctx.mounted) return;
                             final result = await showDialog<Map<String, String>>(
                               context: ctx,
                               builder: (c) => StatefulBuilder(
@@ -1187,10 +1189,10 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                                                     fontSize: 11,
                                                   ),
                                                 ),
-                                                selected: _paperSize == "58",
+                                                selected: paperSize == "58",
                                                 onSelected: (_) =>
                                                     setDialogState(
-                                                      () => _paperSize = "58",
+                                                      () => paperSize = "58",
                                                     ),
                                               ),
                                               const SizedBox(width: 4),
@@ -1201,10 +1203,10 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                                                     fontSize: 11,
                                                   ),
                                                 ),
-                                                selected: _paperSize == "80",
+                                                selected: paperSize == "80",
                                                 onSelected: (_) =>
                                                     setDialogState(
-                                                      () => _paperSize = "80",
+                                                      () => paperSize = "80",
                                                     ),
                                               ),
                                             ],
@@ -1240,7 +1242,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                                               ),
                                               onTap: () async {
                                                 await ThermalPrinter.setPaperSize(
-                                                  _paperSize == "80"
+                                                  paperSize == "80"
                                                       ? PaperSize.mm80
                                                       : PaperSize.mm58,
                                                 );
@@ -1258,7 +1260,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                                         InkWell(
                                           onTap: () async {
                                             await ThermalPrinter.setPaperSize(
-                                              _paperSize == "80"
+                                              paperSize == "80"
                                                   ? PaperSize.mm80
                                                   : PaperSize.mm58,
                                             );
@@ -1310,7 +1312,10 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                                 result["addr"]!,
                               );
                               if (ctx.mounted) {
-                                if (await ThermalPrinter.print(receipt)) {
+                                final printed = await ThermalPrinter.print(
+                                  receipt,
+                                );
+                                if (printed && ctx.mounted) {
                                   Navigator.pop(ctx);
                                   return;
                                 }
@@ -1371,8 +1376,9 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                                         ),
                                       ),
                                       onPressed: () {
-                                        if (hostCtl.text.trim().isNotEmpty)
+                                        if (hostCtl.text.trim().isNotEmpty) {
                                           Navigator.pop(nc, true);
+                                        }
                                       },
                                       child: const Text("Simpan"),
                                     ),
@@ -1385,7 +1391,10 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                                   int.tryParse(portCtl.text) ?? 9100,
                                 );
                                 if (ctx.mounted) {
-                                  if (await ThermalPrinter.print(receipt)) {
+                                  final printed = await ThermalPrinter.print(
+                                    receipt,
+                                  );
+                                  if (printed && ctx.mounted) {
                                     Navigator.pop(ctx);
                                     return;
                                   }
@@ -1400,7 +1409,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                                 await ThermalPrinter.getBluetoothAddress();
                             final host = await ThermalPrinter.getPrinterHost();
                             final isConfigured = btAddr != null || host != null;
-                            if (isConfigured) {
+                            if (isConfigured && ctx.mounted) {
                               final action = await showDialog<int>(
                                 context: ctx,
                                 builder: (c) => AlertDialog(
@@ -1443,7 +1452,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                                 ),
                               );
                               if (action == 2) {
-                                if (await ThermalPrinter.print(receipt)) {
+                                if (await ThermalPrinter.print(receipt) && ctx.mounted) {
                                   Navigator.pop(ctx);
                                   return;
                                 }

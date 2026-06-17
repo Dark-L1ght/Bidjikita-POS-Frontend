@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
-import 'screens/pos_dashboard_screen.dart';
+import 'screens/splash_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,8 +33,7 @@ class MyApp extends ConsumerWidget {
           Theme.of(context).textTheme,
         ),
       ),
-      // Check if user is logged in; otherwise show LoginScreen.
-      home: auth.isLoggedIn ? const PosDashboardScreen() : const LoginScreen(),
+      home: auth.isLoggedIn ? const SplashScreen() : const LoginScreen(),
     );
   }
 }

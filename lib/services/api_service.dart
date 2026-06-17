@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../models/bundle.dart';
 import '../models/product.dart';
+import '../models/shift.dart';
 
 /// Thrown when the server returns a non-2xx status or a network error occurs.
 class ApiException implements Exception {
@@ -126,6 +127,74 @@ class ApiService {
           .map((b) => Bundle.fromJson(b as Map<String, dynamic>))
           .toList();
     });
+  }
+
+  // ── Shifts ───────────────────────────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>?> getActiveShift({
+    required String token,
+  }) async {
+    final res = await http
+        .get(
+          Uri.parse('${AppConfig.baseUrl}/api/shifts/active'),
+          headers: _headers(token: token),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    if (res.statusCode == 404 || res.statusCode == 204) return null;
+    if (res.statusCode != 200) {
+      throw const ApiException('Gagal memuat shift aktif');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>?;
+  }
+
+  static Future<Shift> clockIn({
+    required String token,
+    required int startingCash,
+  }) async {
+    final res = await http
+        .post(
+          Uri.parse('${AppConfig.baseUrl}/api/shifts/clock-in'),
+          headers: _headers(token: token),
+          body: jsonEncode({'starting_cash': startingCash}),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode != 201 && res.statusCode != 200) {
+      throw ApiException(
+        data['message'] as String? ?? 'Gagal memulai shift',
+        statusCode: res.statusCode,
+      );
+    }
+    return Shift.fromJson(data);
+  }
+
+  static Future<Map<String, dynamic>> clockOut({
+    required String token,
+    int? actualCash,
+    int? actualQris,
+  }) async {
+    final body = <String, dynamic>{};
+    if (actualCash != null) body['actual_cash'] = actualCash;
+    if (actualQris != null) body['actual_qris'] = actualQris;
+
+    final res = await http
+        .put(
+          Uri.parse('${AppConfig.baseUrl}/api/shifts/clock-out'),
+          headers: _headers(token: token),
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode != 200) {
+      throw ApiException(
+        data['message'] as String? ?? 'Gagal mengakhiri shift',
+        statusCode: res.statusCode,
+      );
+    }
+    return data;
   }
 
   // ── Orders ───────────────────────────────────────────────────────────────────

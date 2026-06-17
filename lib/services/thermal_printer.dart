@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
@@ -206,7 +205,7 @@ class ThermalPrinter {
   /// Generates ESC/POS byte sequence.
   static Future<List<int>> _buildEscPos(ReceiptData r) async {
     await _loadPaperSize();
-    final generator = await Generator(
+    final generator = Generator(
       _paperSize,
       await CapabilityProfile.load(),
     );
