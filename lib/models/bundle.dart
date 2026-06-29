@@ -1,7 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-/// A bundled product from the backend `Bundle` table.
-///
 /// Response shape from `GET /api/bundles`:
 /// ```json
 /// {
@@ -9,13 +7,13 @@ import 'package:flutter/foundation.dart';
 ///   "bundle_name": "Paket Hemat",
 ///   "description": "...",
 ///   "bundle_price": 45000,
-///   "BundleItems": [
+///   "items": [
 ///     {
 ///       "id": 1,
 ///       "quantity": 1,
 ///       "product_id": 1,
-///       "Product": { "id": 1, "product_name": "Kopi Susu" },
-///       "ProductVariant": { "id": 1, "variant_name": "Regular", "price": 25000 }
+///       "product": { "id": 1, "product_name": "Kopi Susu", "image_url": null },
+///       "variant": { "id": 1, "variant_name": "Regular", "price": 25000 }
 ///     }
 ///   ]
 /// }
@@ -43,7 +41,7 @@ class Bundle {
   });
 
   factory Bundle.fromJson(Map<String, dynamic> json) {
-    final rawItems = (json['BundleItems'] as List<dynamic>?) ?? [];
+    final rawItems = (json['items'] as List<dynamic>?) ?? [];
     final items = rawItems
         .map((i) => BundleItem.fromJson(i as Map<String, dynamic>))
         .toList();
@@ -84,8 +82,8 @@ class BundleItem {
   });
 
   factory BundleItem.fromJson(Map<String, dynamic> json) {
-    final product = json['Product'] as Map<String, dynamic>?;
-    final variant = json['ProductVariant'] as Map<String, dynamic>?;
+    final product = json['product'] as Map<String, dynamic>?;
+    final variant = json['variant'] as Map<String, dynamic>?;
 
     return BundleItem(
       id: json['id'] as int,

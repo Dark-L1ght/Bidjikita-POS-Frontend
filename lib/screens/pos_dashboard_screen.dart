@@ -195,7 +195,7 @@ class _PosDashboardScreenState extends ConsumerState<PosDashboardScreen> {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      'Shift · ${shiftState.activeShift!.startTime.hour.toString().padLeft(2, '0')}:${shiftState.activeShift!.startTime.minute.toString().padLeft(2, '0')}',
+                      'Shift mulai ${shiftState.activeShift!.startTime.hour.toString().padLeft(2, '0')}:${shiftState.activeShift!.startTime.minute.toString().padLeft(2, '0')}',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Colors.black87,
