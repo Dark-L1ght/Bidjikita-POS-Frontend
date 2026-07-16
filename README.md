@@ -13,15 +13,21 @@ Flutter-based Point of Sale for **Bidjikita Coffee Roastery**.
 - **Orders** — Sent to backend as single line-items (bundles expanded)
 - **Network detection** — Wi-Fi indicator in AppBar
 - **Auth** — JWT-based login with persistent session
+- **Shift** — Clock-in/clock-out per cashier with starting cash, expected cash/QRIS reconciliation, and live shift summary dashboard
+- **Printer settings** — Configure Bluetooth or network (Wi-Fi/LAN) ESC/POS printer and paper size (58mm/80mm)
 
 ## Screens
 
 | Screen | Description |
 |---|---|
+| `SplashScreen` | Checks for an active shift after login and routes accordingly |
 | `LoginScreen` | Username + password login |
-| `PosDashboardScreen` | Main POS layout with catalog + cart panels |
+| `ClockInScreen` | Start a new shift with starting cash before reaching the POS |
+| `PosDashboardScreen` | Main POS layout with catalog + cart panels, plus shift dashboard tab |
+| `SettingsScreen` | Configure Bluetooth/network thermal printer and paper size |
 | `CatalogPanel` | Product/bundle grid, search, category chips |
 | `CartPanel` | Cart items, payment method selection, receipt |
+| `ShiftDashboard` | Shift summary widget — expected cash/QRIS, order count, end-shift action |
 
 ## Tech Stack
 
@@ -67,23 +73,30 @@ lib/
 │   ├── cart_item.dart          ← CartItem + BundleSubItem
 │   ├── product.dart            ← Product model
 │   ├── product_variant.dart    ← ProductVariant
-│   └── receipt.dart            ← ReceiptData
+│   ├── receipt.dart            ← ReceiptData
+│   └── shift.dart              ← Shift model (cashier shift tracking)
 ├── providers/
 │   ├── auth_provider.dart      ← Auth state (login/logout)
 │   ├── cart_provider.dart      ← Cart state (items, totals)
 │   ├── network_provider.dart   ← Connectivity check
-│   └── product_provider.dart   ← Product + bundle list, filters
+│   ├── product_provider.dart   ← Product + bundle list, filters
+│   └── shift_provider.dart     ← Active shift state (clock-in/clock-out)
 ├── screens/
+│   ├── splash_screen.dart      ← Routes based on active shift
 │   ├── login_screen.dart       ← Login page
-│   └── pos_dashboard_screen.dart   ← Main POS layout
+│   ├── clock_in_screen.dart    ← Start shift with starting cash
+│   ├── pos_dashboard_screen.dart   ← Main POS layout
+│   └── settings_screen.dart    ← Thermal printer configuration
 ├── services/
 │   ├── api_service.dart        ← HTTP calls
-│   └── receipt_printer.dart    ← PDF receipt generation
+│   ├── receipt_printer.dart    ← PDF receipt generation
+│   └── thermal_printer.dart    ← Bluetooth/network ESC/POS printing
 ├── utils/
 │   └── currency.dart           ← IDR formatting
 └── widgets/
     ├── cart_panel.dart         ← Cart, payment dialogs, receipt
-    └── catalog_panel.dart      ← Product grid, search, detail dialogs
+    ├── catalog_panel.dart      ← Product grid, search, detail dialogs
+    └── shift_dashboard.dart    ← Shift summary tab (cash/QRIS reconciliation)
 ```
 
 ## Configuration

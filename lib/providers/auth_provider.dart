@@ -83,7 +83,8 @@ class AuthNotifier extends Notifier<AuthState> {
       state = state.copyWith(token: token, user: user, isLoading: false);
     } on ApiException catch (e) {
       state = state.copyWith(isLoading: false, error: e.message);
-    } catch (_) {
+    } catch (e) {
+      logError('Login error', e);
       state = state.copyWith(
         isLoading: false,
         error: 'Tidak dapat terhubung ke server. Pastikan server berjalan.',

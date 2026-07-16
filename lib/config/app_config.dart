@@ -2,6 +2,6 @@
 class AppConfig {
   AppConfig._();
 
-  static const String baseUrl =
-      'https://bidjikita-pos-api-production.up.railway.app';
+  static String get baseUrl =>
+      'https://bidjikita-pos-api-production-2740.up.railway.app';
 }
