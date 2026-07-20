@@ -50,21 +50,21 @@ class Product {
   bool get isAvailable => status == 'available';
 
   /// Build a [Product] from a backend API JSON object.
+  /// Supports both Prisma (lowercase) and Sequelize (uppercase) field names.
   factory Product.fromApi(Map<String, dynamic> json) {
-    final rawVariants = (json['ProductVariants'] as List<dynamic>?) ?? [];
+    final rawVariants =
+        (json['ProductVariants'] ?? json['variants'] ?? []) as List<dynamic>;
     final variants = rawVariants
         .map((v) => ProductVariant.fromJson(v as Map<String, dynamic>))
         .toList();
 
-    // Display price = the cheapest variant price, or 0 if no variants.
     final displayPrice = variants.isNotEmpty
         ? variants.map((v) => v.price).reduce((a, b) => a < b ? a : b)
         : 0;
 
-    final category =
-        (json['Category'] as Map<String, dynamic>?)?['category_name']
-            as String? ??
-        'Lainnya';
+    final catObj =
+        (json['Category'] ?? json['category']) as Map<String, dynamic>?;
+    final category = catObj?['category_name'] as String? ?? 'Lainnya';
 
     return Product(
       id: json['id'].toString(),
