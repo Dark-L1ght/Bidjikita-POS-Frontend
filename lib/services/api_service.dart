@@ -56,7 +56,7 @@ class ApiService {
   static Future<List<Product>> getProducts({String? token}) async {
     final res = await http
         .get(
-          Uri.parse('${AppConfig.baseUrl}/api/products'),
+          Uri.parse('${AppConfig.baseUrl}/api/products?simple=true'),
           headers: _headers(token: token),
         )
         .timeout(const Duration(seconds: 15));
@@ -186,7 +186,7 @@ class ApiService {
           headers: _headers(token: token),
           body: jsonEncode({'order_number': orderNumber, 'items': items}),
         )
-        .timeout(const Duration(seconds: 15));
+        .timeout(const Duration(seconds: 30));
 
     final data = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode != 201) {
@@ -216,7 +216,7 @@ class ApiService {
             if (notes.isNotEmpty) 'notes': notes,
           }),
         )
-        .timeout(const Duration(seconds: 15));
+        .timeout(const Duration(seconds: 30));
 
     final data = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode != 201) {

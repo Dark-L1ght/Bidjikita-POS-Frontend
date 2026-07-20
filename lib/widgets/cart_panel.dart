@@ -905,11 +905,39 @@ class _CartPanelState extends ConsumerState<CartPanel> {
       );
       final orderId = order['id'] as int;
 
-      final tx = await ApiService.createTransaction(
-        token: token,
-        orderId: orderId,
-        paymentMethod: paymentMethod,
-      );
+      Map<String, dynamic>? tx;
+      for (var attempt = 0; attempt < 3; attempt++) {
+        try {
+          tx = await ApiService.createTransaction(
+            token: token,
+            orderId: orderId,
+            paymentMethod: paymentMethod,
+          );
+          break;
+        } catch (_) {
+          if (attempt < 2) {
+            await Future.delayed(Duration(seconds: 2));
+          }
+        }
+      }
+
+      if (tx == null) {
+        setLoading(false);
+        if (loadingCtx.mounted) Navigator.pop(loadingCtx);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Pesanan sudah tersimpan (No. $orderNumber) tapi pembayaran belum diproses. Silakan hubungi admin.',
+              ),
+              backgroundColor: Colors.orange.shade800,
+              duration: Duration(seconds: 8),
+            ),
+          );
+        }
+        return;
+      }
+
       final invoiceNumber = tx['invoice_number'] as String?;
 
       final receipt = _buildReceiptData(
@@ -1452,7 +1480,8 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                                 ),
                               );
                               if (action == 2) {
-                                if (await ThermalPrinter.print(receipt) && ctx.mounted) {
+                                if (await ThermalPrinter.print(receipt) &&
+                                    ctx.mounted) {
                                   Navigator.pop(ctx);
                                   return;
                                 }
